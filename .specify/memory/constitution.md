@@ -1,50 +1,68 @@
-# [PROJECT_NAME] Constitution
-<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
+<!--
+Sync Impact Report
+Version change: N/A → 1.0.0
+Modified principles: (all added)
+Added sections: Core Principles, Architecture & Security Constraints, Development Workflow & Quality Gates, Governance
+Templates requiring updates:
+- .specify/templates/plan-template.md ✅
+- .specify/templates/spec-template.md ✅
+- .specify/templates/tasks-template.md ✅
+Follow-up TODOs:
+- TODO(RATIFICATION_DATE): Original ratification date unknown, must be set by project owner.
+-->
+
+# Bank Application Constitution
 
 ## Core Principles
 
-### [PRINCIPLE_1_NAME]
-<!-- Example: I. Library-First -->
-[PRINCIPLE_1_DESCRIPTION]
-<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
+### I. Separation of Concerns (Frontend/Backend)
+All user-facing functionality is implemented in a single-page application (SPA) frontend, which communicates exclusively with a REST API backend. No business logic is duplicated between layers. File upload, data processing, and visualization responsibilities are clearly separated.
 
-### [PRINCIPLE_2_NAME]
-<!-- Example: II. CLI Interface -->
-[PRINCIPLE_2_DESCRIPTION]
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+**Rationale**: Ensures maintainability, testability, and scalability by enforcing clear boundaries and responsibilities.
 
-### [PRINCIPLE_3_NAME]
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
-[PRINCIPLE_3_DESCRIPTION]
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+### II. Input Integrity & Deduplication
+All uploaded CSV files are validated for format and content. The backend MUST deduplicate transfers and bank accounts before persisting. No duplicate transactions or accounts are allowed in the system.
 
-### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
-[PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+**Rationale**: Prevents data corruption and ensures accurate analytics.
 
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+### III. Testability & Quality Gates (NON-NEGOTIABLE)
+All code (frontend and backend) MUST be covered by automated tests: unit, integration, and end-to-end. No feature is considered complete without passing tests for all acceptance criteria. Red-Green-Refactor cycle is enforced.
 
-## [SECTION_2_NAME]
-<!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
+**Rationale**: Guarantees reliability and enables safe refactoring and extensibility.
 
-[SECTION_2_CONTENT]
-<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
+### IV. Extensibility & Modularity
+The system MUST be designed for easy addition of new banks, file formats, and analytics features. All modules/components are independently testable and documented. No hardcoded bank-specific logic in core processing.
 
-## [SECTION_3_NAME]
-<!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->
+**Rationale**: Supports future growth and adaptation to new requirements.
 
-[SECTION_3_CONTENT]
-<!-- Example: Code review requirements, testing gates, deployment approval process, etc. -->
+### V. Observability & Traceability
+All critical operations (file upload, processing, deduplication, analytics) MUST be logged with structured, queryable logs. Errors and anomalies are surfaced to both users (in the frontend) and operators (in the backend) with actionable diagnostics.
+
+**Rationale**: Enables rapid debugging, compliance, and operational excellence.
+
+## Architecture & Security Constraints
+
+- Technology stack: Modern SPA framework (e.g., React, Vue, Svelte) for frontend; RESTful API backend (e.g., Node.js/Express, Python/FastAPI, or equivalent).
+- Data storage: Use a relational database (e.g., PostgreSQL) for persistence of accounts and transfers.
+- Security: All file uploads and API endpoints require authentication and input validation. Sensitive data is encrypted at rest and in transit.
+- Performance: System must support concurrent uploads and analytics for at least 1000 users with <1s p95 response time for core operations.
+- Compliance: Adhere to relevant data protection regulations (e.g., GDPR) for all user/account data.
+
+## Development Workflow & Quality Gates
+
+- All changes require code review by at least one other contributor.
+- CI/CD pipeline MUST enforce passing tests, linting, and static analysis before merge.
+- Feature branches are required for all new features and bugfixes; direct commits to main are prohibited.
+- All user stories and acceptance criteria must be independently testable and demonstrable.
+- Documentation (user and developer) must be updated with each relevant change.
 
 ## Governance
-<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
 
-[GOVERNANCE_RULES]
-<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
+- This constitution supersedes all other project practices and policies.
+- Amendments require documentation, approval by majority of maintainers, and a migration plan if breaking.
+- All PRs and reviews must verify compliance with the constitution and principles above.
+- Versioning follows semantic versioning: MAJOR for breaking/removal, MINOR for new/expanded principles, PATCH for clarifications.
+- Compliance reviews are conducted quarterly or upon major release.
+- TODO(RATIFICATION_DATE): Original ratification date must be set by project owner.
 
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+**Version**: 1.0.0 | **Ratified**: TODO(RATIFICATION_DATE) | **Last Amended**: 2026-02-24
