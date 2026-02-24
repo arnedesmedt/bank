@@ -1,0 +1,88 @@
+# contracts/api.json
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Bank CSV Import API",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/transfers/import": {
+      "post": {
+        "summary": "Import CSV file",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                },
+                "required": ["file"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Transfers imported successfully"
+          },
+          "400": {
+            "description": "Invalid CSV format or error"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/transfers": {
+      "get": {
+        "summary": "List transfers",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {"type": "integer"}
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "schema": {"type": "string"}
+          },
+          {
+            "name": "filter",
+            "in": "query",
+            "schema": {"type": "string"}
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of transfers"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "OAuth2": {
+        "type": "oauth2",
+        "flows": {
+          "authorizationCode": {
+            "authorizationUrl": "https://auth.example.com/oauth/authorize",
+            "tokenUrl": "https://auth.example.com/oauth/token",
+            "scopes": {}
+          }
+        }
+      }
+    }
+  },
+  "security": [{"OAuth2": []}]
+}
+
