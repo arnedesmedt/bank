@@ -30,12 +30,12 @@ description: "Task list for CSV Import Transfers feature"
 
 **Purpose**: Core infrastructure that MUST be complete before ANY user story can be implemented
 
-- [ ] T009 Implement base User entity and OAuth2 authentication in backend/src/ (Symfony security, league/oauth2-server)
-- [ ] T010 [P] Implement authentication flow in frontend/src/ (OAuth2 client, sign-in/out UI)
-- [ ] T011 [P] Set up PostgreSQL schema and migrations for core entities (backend/migrations/)
-- [ ] T012 [P] Implement error handling middleware and global error responses in backend/src/
-- [ ] T013 [P] Implement API Platform configuration (JSON only, docs disabled) in backend/config/
-- [ ] T014 [P] Set up Xdebug config for backend (backend/docker/xdebug.ini, Dockerfile)
+- [x] T009 Implement base User entity and OAuth2 authentication in backend/src/ (Symfony security, league/oauth2-server)
+- [x] T010 [P] Implement authentication flow in frontend/src/ (OAuth2 client, sign-in/out UI)
+- [x] T011 [P] Set up PostgreSQL schema and migrations for core entities (backend/migrations/)
+- [x] T012 [P] Implement error handling middleware and global error responses in backend/src/
+- [x] T013 [P] Implement API Platform configuration (JSON only, docs disabled, expect open api) in backend/config/
+- [x] T014 [P] Set up Xdebug config for backend (backend/docker/xdebug.ini, Dockerfile)
 
 ---
 

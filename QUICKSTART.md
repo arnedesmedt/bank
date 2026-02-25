@@ -7,7 +7,24 @@
 
 ## Getting Started
 
-### 1. Start the Services
+### 1. Generate JWT Keys for OAuth2
+
+Before starting the services, you need to generate JWT keys for OAuth2 authentication:
+
+```bash
+# From the project root
+make jwt-keys
+```
+
+This will create:
+- `backend/config/jwt/private.pem` - Encrypted private key (644 permissions)
+- `backend/config/jwt/public.pem` - Public key (644 permissions)
+
+**Important:** The keys are automatically set with `644` permissions so PHP-FPM's `www-data` user can read them. If you generate keys manually with `openssl`, make sure to run `chmod 644` on both files.
+
+**Note:** These keys are git-ignored and should never be committed. You'll need to regenerate them on each new environment.
+
+### 2. Start the Services
 
 ```bash
 # From the project root
@@ -20,7 +37,7 @@ This will start:
 - Nginx web server on port 8080
 - React frontend on port 3000
 
-### 2. Check Service Status
+### 3. Check Service Status
 
 ```bash
 docker compose ps
@@ -32,7 +49,7 @@ You should see 4 services running:
 - bank_nginx
 - bank_frontend
 
-### 3. View Logs
+### 4. View Logs
 
 ```bash
 # All services
@@ -50,7 +67,7 @@ make logs-php
 make logs-frontend
 ```
 
-### 4. Run Database Migrations
+### 5. Run Database Migrations
 
 ```bash
 docker compose exec php bin/console doctrine:migrations:migrate --no-interaction
@@ -61,11 +78,28 @@ Or use the Makefile:
 make migrate
 ```
 
-### 5. Access the Application
+### 6. Access the Application
 
 - Frontend: http://localhost:3000
 - Backend API: http://localhost:8080
 - Database: `postgresql://bank_user:bank_password@localhost:5432/bank_app`
+
+## Development Workflow
+
+### Make Commands
+
+You can run `make` commands from:
+- **Project root:** `/`
+- **Backend directory:** `/backend` (symlink)
+- **Frontend directory:** `/frontend` (symlink)
+
+```bash
+# From any directory
+make help           # Show all available commands
+make up            # Start all containers
+make down          # Stop all containers
+make test-backend  # Run backend tests
+```
 
 ### 6. Development Workflow
 
@@ -94,10 +128,24 @@ make shell-php
 make test-backend
 make lint-backend      # Run all linting tools
 make fix-backend       # Auto-fix PHPCS violations
+make fixtures-load     # Load test data (dev environment)
 make migrate-create
 ```
 
 **Note:** If linting fails with PHPCS violations, run `make fix-backend` to automatically fix most issues.
+
+#### Load Test Data
+
+To populate your development database with test users:
+
+```bash
+make fixtures-load
+```
+
+This creates test users:
+- `john@example.com` / `password123`
+- `jane@example.com` / `password456`
+- `admin@example.com` / `admin123` (admin role)
 
 #### Frontend Development
 

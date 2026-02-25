@@ -1,0 +1,10 @@
+when@test:
+    zenstruck_foundry:
+        auto_refresh_proxies: false
+
+    services:
+        App\Tests\Factory\:
+            resource: '%kernel.project_dir%/tests/Factory/'
+            autowire: true
+            autoconfigure: true
+

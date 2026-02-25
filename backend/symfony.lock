@@ -36,6 +36,18 @@
             "src/Repository/.gitignore"
         ]
     },
+    "doctrine/doctrine-fixtures-bundle": {
+        "version": "4.3",
+        "recipe": {
+            "repo": "github.com/symfony/recipes",
+            "branch": "main",
+            "version": "3.0",
+            "ref": "1f5514cfa15b947298df4d771e694e578d4c204d"
+        },
+        "files": [
+            "src/DataFixtures/AppFixtures.php"
+        ]
+    },
     "doctrine/doctrine-migrations-bundle": {
         "version": "4.0",
         "recipe": {
@@ -60,6 +72,18 @@
         "files": [
             "config/packages/league_oauth2_server.yaml",
             "config/routes/league_oauth2_server.yaml"
+        ]
+    },
+    "nelmio/cors-bundle": {
+        "version": "2.6",
+        "recipe": {
+            "repo": "github.com/symfony/recipes",
+            "branch": "main",
+            "version": "1.5",
+            "ref": "6bea22e6c564fba3a1391615cada1437d0bde39c"
+        },
+        "files": [
+            "config/packages/nelmio_cors.yaml"
         ]
     },
     "nyholm/psr7": {
@@ -196,6 +220,15 @@
             "config/routes/security.yaml"
         ]
     },
+    "symfony/uid": {
+        "version": "8.0",
+        "recipe": {
+            "repo": "github.com/symfony/recipes",
+            "branch": "main",
+            "version": "7.0",
+            "ref": "0df5844274d871b37fc3816c57a768ffc60a43a5"
+        }
+    },
     "symfony/validator": {
         "version": "8.0",
         "recipe": {
@@ -206,6 +239,19 @@
         },
         "files": [
             "config/packages/validator.yaml"
+        ]
+    },
+    "zenstruck/foundry": {
+        "version": "2.9",
+        "recipe": {
+            "repo": "github.com/symfony/recipes",
+            "branch": "main",
+            "version": "2.7",
+            "ref": "7fc98f546dfeaa83cc2110634f8ff078d070b965"
+        },
+        "files": [
+            "config/packages/zenstruck_foundry.yaml",
+            "src/Story/AppStory.php"
         ]
     }
 }

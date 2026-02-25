@@ -19,5 +19,13 @@ services:
     App\:
         resource: '../src/'
 
+    # OAuth2 User Converter for converting Symfony users to League entities
+    League\Bundle\OAuth2ServerBundle\Converter\UserConverterInterface:
+        alias: App\OAuth2\UserConverter
+
+    # OAuth2 User Repository for password grant
+    League\OAuth2\Server\Repositories\UserRepositoryInterface:
+        alias: App\OAuth2\PasswordGrantUserRepository
+
     # add more service definitions when explicit configuration is needed
     # please note that last definitions always *replace* previous ones

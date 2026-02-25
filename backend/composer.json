@@ -11,11 +11,14 @@
         "doctrine/doctrine-bundle": "^3.2",
         "doctrine/doctrine-migrations-bundle": "^4.0",
         "doctrine/orm": "^3.6",
+        "league/oauth2-server-bundle": "^1.1",
+        "nelmio/cors-bundle": "^2.6",
         "symfony/console": "8.0.*",
         "symfony/dotenv": "8.0.*",
         "symfony/flex": "^2",
         "symfony/framework-bundle": "8.0.*",
         "symfony/runtime": "8.0.*",
+        "symfony/uid": "8.0.*",
         "symfony/yaml": "8.0.*"
     },
     "config": {
@@ -74,8 +77,8 @@
     },
     "require-dev": {
         "doctrine/coding-standard": "^14.0",
-        "league/oauth2-server-bundle": "*",
-        "phpmd/phpmd": "^2.5",
+        "doctrine/doctrine-fixtures-bundle": "^4.3.1",
+        "phpmd/phpmd": "3.x-dev",
         "phpro/grumphp": "^2.19",
         "phpstan/phpstan": "^2.1",
         "phpunit/phpunit": "^13.0",
@@ -83,6 +86,7 @@
         "squizlabs/php_codesniffer": "^4.0",
         "symfony/browser-kit": "8.0.*",
         "symfony/css-selector": "8.0.*",
-        "symfony/http-client": "8.0.*"
+        "symfony/http-client": "8.0.*",
+        "zenstruck/foundry": "^2.9.2"
     }
 }
