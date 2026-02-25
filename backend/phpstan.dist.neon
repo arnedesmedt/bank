@@ -1,0 +1,11 @@
+parameters:
+    level: max
+    paths:
+        - src/
+        - tests/
+    excludePaths:
+        - vendor/
+        - var/
+        - public/
+        - migrations/
+        - tests/bootstrap.php

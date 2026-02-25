@@ -1,0 +1,31 @@
+# /home/arnedesmedt/workspace/apps/bank/devops/tmuxinator.yml
+name: bank-app
+root: /home/arnedesmedt/workspace/apps/bank
+
+windows:
+    - docker-compose:
+        layout: tiled
+        panes:
+            - docker compose up
+    - backend:
+        layout: main-vertical
+        panes:
+            - docker compose exec php bash
+            - docker compose logs -f php
+    - frontend:
+        layout: main-vertical
+        panes:
+            - docker compose exec frontend sh
+            - docker compose logs -f frontend
+    - database:
+        layout: main-vertical
+        panes:
+            - docker compose exec db psql -U bank_user -d bank_app
+            - docker compose logs -f db
+    - nginx:
+        panes:
+            - docker compose logs -f nginx
+    - editor:
+        panes:
+            - vim
+

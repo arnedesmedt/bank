@@ -1,0 +1,13 @@
+api_platform:
+    title: Bank API
+    version: 1.0.0
+    defaults:
+        stateless: true
+        cache_headers:
+            vary: ['Content-Type', 'Authorization', 'Origin']
+    formats:
+        json: ['application/json']
+    docs_formats: []  # Disable all documentation formats
+    enable_swagger_ui: false
+    enable_re_doc: false
+    enable_entrypoint: false

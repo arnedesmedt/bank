@@ -1,0 +1,83 @@
+services:
+    # PostgreSQL Database
+    db:
+        image: postgres:16-alpine
+        container_name: bank_db
+        environment:
+            POSTGRES_DB: ${POSTGRES_DB:-bank_app}
+            POSTGRES_USER: ${POSTGRES_USER:-bank_user}
+            POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-bank_password}
+        ports:
+            - "${POSTGRES_PORT:-5432}:5432"
+        volumes:
+            - db_data:/var/lib/postgresql/data
+        networks:
+            - bank_network
+        healthcheck:
+            test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-bank_user} -d ${POSTGRES_DB:-bank_app}"]
+            interval: 10s
+            timeout: 5s
+            retries: 5
+
+    # PHP Backend
+    php:
+        build:
+            context: ./backend
+            dockerfile: docker/Dockerfile
+        container_name: bank_php
+        volumes:
+            - ./backend:/var/www/html
+            - ./backend/docker/xdebug.ini:/usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini
+            - ./.git:/var/www/html/.git:ro
+        networks:
+            - bank_network
+        depends_on:
+            db:
+                condition: service_healthy
+        environment:
+            DATABASE_URL: "postgresql://${POSTGRES_USER:-bank_user}:${POSTGRES_PASSWORD:-bank_password}@db:5432/${POSTGRES_DB:-bank_app}?serverVersion=16&charset=utf8"
+            XDEBUG_MODE: debug,develop,coverage
+            XDEBUG_CONFIG: client_host=host.docker.internal
+            PHP_IDE_CONFIG: "serverName=bank-app"
+
+    # Nginx Web Server
+    nginx:
+        build:
+            context: ./backend/docker
+            dockerfile: Dockerfile.nginx
+        container_name: bank_nginx
+        ports:
+            - "${BACKEND_PORT:-8080}:80"
+        volumes:
+            - ./backend:/var/www/html
+            - ./backend/docker/default.conf:/etc/nginx/conf.d/default.conf
+            - ./backend/docker/nginx.conf:/etc/nginx/nginx.conf
+        networks:
+            - bank_network
+        depends_on:
+            - php
+
+    # React Frontend
+    frontend:
+        build:
+            context: ./frontend
+            dockerfile: Dockerfile
+        container_name: bank_frontend
+        ports:
+            - "${FRONTEND_PORT:-3000}:3000"
+        volumes:
+            - ./frontend:/app
+            - /app/node_modules
+        networks:
+            - bank_network
+        environment:
+            VITE_API_URL: "http://localhost:${BACKEND_PORT:-8080}"
+        command: npm run dev -- --host 0.0.0.0
+
+networks:
+    bank_network:
+        driver: bridge
+
+volumes:
+    db_data:
+

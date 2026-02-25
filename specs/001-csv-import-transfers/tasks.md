@@ -15,14 +15,14 @@ description: "Task list for CSV Import Transfers feature"
 
 **Purpose**: Project initialization and basic structure
 
-- [ ] T001 Create backend/ and frontend/ project structure per implementation plan
-- [ ] T002 Initialize Symfony 8.x project in backend/ with API Platform, Doctrine, PostgreSQL, OAuth2, Xdebug, grumphp (composer.json)
-- [ ] T003 Initialize React + Vite + TypeScript + TailwindCSS project in frontend/ (package.json, vite.config.ts)
-- [ ] T004 [P] Configure Docker Compose for backend, db, frontend, Xdebug (backend/docker/, frontend/docker/, docker-compose.yml)
-- [ ] T005 [P] Add tmuxinator config for multi-container orchestration and logs (devops/tmuxinator.yml)
-- [ ] T006 [P] Configure backend and frontend .env files for DB and OAuth2 provider
-- [ ] T007 [P] Set up grumphp, phpstan, phpmd, phpcs (doctrine coding standard), rector in backend/ (grumphp.yml, phpstan.neon, etc.)
-- [ ] T008 [P] Set up linting, formatting, and test scripts in frontend/ (eslint, prettier, npm scripts)
+- [x] T001 Create backend/ and frontend/ project structure per implementation plan
+- [x] T002 Initialize Symfony 8.x project in backend/ with API Platform, Doctrine, PostgreSQL, OAuth2, Xdebug, grumphp (composer.json)
+- [x] T003 Initialize React + Vite + TypeScript + TailwindCSS project in frontend/ (package.json, vite.config.ts)
+- [x] T004 [P] Configure Docker Compose for backend, db, frontend, Xdebug (backend/docker/, frontend/docker/, docker-compose.yml)
+- [x] T005 [P] Add tmuxinator config for multi-container orchestration and logs (devops/tmuxinator.yml)
+- [x] T006 [P] Configure backend and frontend .env files for DB and OAuth2 provider
+- [x] T007 [P] Set up grumphp, phpstan, phpmd, phpcs (doctrine coding standard), rector in backend/ (grumphp.yml, phpstan.neon, etc.)
+- [x] T008 [P] Set up linting, formatting, and test scripts in frontend/ (eslint, prettier, npm scripts)
 
 ---
 
