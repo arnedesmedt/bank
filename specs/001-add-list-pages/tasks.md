@@ -33,12 +33,12 @@ description: "Task list for Add List Pages feature implementation"
 **Goal**: List all bank accounts with minimal UI, error/empty handling
 **Independent Test Criteria**: Visiting /bank-accounts displays all accounts, empty state, and error state
 
-- [ ] T008 [P] [US1] Add route `/bank-accounts` to frontend/src/pages/BankAccountsListPage.tsx
-- [ ] T009 [P] [US1] Implement BankAccountsListPage component in frontend/src/pages/BankAccountsListPage.tsx
-- [ ] T010 [P] [US1] Render each account as row (name, account number, balance) in frontend/src/components/BankAccountRow.tsx
-- [ ] T011 [P] [US1] Integrate bankAccountsService for data fetching in BankAccountsListPage.tsx
-- [ ] T012 [P] [US1] Handle empty/error states using EmptyOrErrorState.tsx in BankAccountsListPage.tsx
-- [ ] T013 [P] [US1] Add automated tests for rendering, empty/error states, and API integration in frontend/tests/BankAccountsListPage.test.tsx
+- [X] T008 [P] [US1] Add route `/bank-accounts` to frontend/src/pages/BankAccountsListPage.tsx
+- [X] T009 [P] [US1] Implement BankAccountsListPage component in frontend/src/pages/BankAccountsListPage.tsx
+- [X] T010 [P] [US1] Render each account as row (name, account number, balance) in frontend/src/components/BankAccountRow.tsx
+- [X] T011 [P] [US1] Integrate bankAccountsService for data fetching in BankAccountsListPage.tsx
+- [X] T012 [P] [US1] Handle empty/error states using EmptyOrErrorState.tsx in BankAccountsListPage.tsx
+- [X] T013 [P] [US1] Add automated tests for rendering, empty/error states, and API integration in frontend/tests/BankAccountsListPage.test.tsx
 
 ## Phase 4: User Story 2 - View Labels List (Priority: P2)
 
