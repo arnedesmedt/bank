@@ -16,6 +16,14 @@ use App\State\LabelItemProvider;
 use App\State\LabelStateProcessor;
 use App\State\LabelStateProvider;
 
+/**
+ * API resource for labels.
+ *
+ * Labels categorise transfers and support a parent-child hierarchy.
+ * When a label is linked to a bank account or a regex pattern, it is
+ * automatically applied to matching transfers during CSV import
+ * (POST /api/transfers/import). See specs/001-csv-import-transfers for details.
+ */
 #[ApiResource(
     shortName: 'Label',
     operations: [

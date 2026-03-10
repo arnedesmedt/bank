@@ -1,22 +1,18 @@
-const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8080';
+import { apiGet } from './apiClient';
 
-// API service for fetching bank accounts
-export async function fetchBankAccounts(accessToken: string): Promise<BankAccount[]> {
-  const response = await fetch(`${API_URL}/api/bank-accounts`, {
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      Accept: 'application/json',
-    },
-  });
-  if (!response.ok) {
-    throw new Error('Failed to fetch bank accounts');
-  }
-  return response.json() as Promise<BankAccount[]>;
-}
-
+/**
+ * Represents a bank account as returned by GET /api/bank-accounts.
+ * Accounts are created when a CSV is imported via the transfer import feature.
+ */
 export interface BankAccount {
   id: string;
   accountName: string;
   accountNumber: string;
   linkedLabelIds: string[];
 }
+
+/** Fetch all bank accounts belonging to the authenticated user. */
+export function fetchBankAccounts(accessToken: string): Promise<BankAccount[]> {
+  return apiGet<BankAccount[]>('/api/bank-accounts', accessToken);
+}
+

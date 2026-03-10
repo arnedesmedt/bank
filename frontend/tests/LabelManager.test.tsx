@@ -1,12 +1,12 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { LabelManager } from '../components/LabelManager';
+import { LabelManager } from '../src/components/LabelManager';
 
 // ---------------------------------------------------------------------------
 // Mock AuthContext
 // ---------------------------------------------------------------------------
-vi.mock('../contexts/AuthContext', () => ({
+vi.mock('../src/contexts/AuthContext', () => ({
   useAuth: () => ({
     accessToken: 'mock-token',
     isAuthenticated: true,

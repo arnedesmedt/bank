@@ -2,11 +2,11 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
-import * as labelsService from '../services/labelsService';
-import LabelsListPage from '../pages/LabelsListPage';
+import * as labelsService from '../src/services/labelsService';
+import LabelsListPage from '../src/pages/LabelsListPage';
 
 // Mock AuthContext so the page gets a token without a real provider
-vi.mock('../contexts/AuthContext', () => ({
+vi.mock('../src/contexts/AuthContext', () => ({
     useAuth: () => ({ accessToken: 'test-token' }),
 }));
 

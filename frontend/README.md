@@ -1,73 +1,90 @@
-# React + TypeScript + Vite
+# Bank Application — Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React + TypeScript SPA for the bank application, built with Vite and TailwindCSS.
 
-Currently, two official plugins are available:
+## Tech Stack
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- **React 19** with TypeScript
+- **Vite** for bundling and dev server
+- **TailwindCSS** for styling
+- **Vitest** + **React Testing Library** for tests
 
-## React Compiler
+## Pages
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+| Page | Route | Description |
+|------|-------|-------------|
+| Transfers | *(default)* | Import CSV files, manage labels, and view the transfer list |
+| Bank Accounts | `/bank-accounts` | Read-only list of all bank accounts (populated via CSV import) |
+| Labels | `/labels` | Read-only list of all labels with parent hierarchy and linked accounts |
 
-## Expanding the ESLint configuration
+Navigation between pages is available via the tab bar at the top of the authenticated layout.
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## Architecture
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```
+src/
+├── contexts/         # AuthContext — OAuth2 token management
+├── pages/            # Full-page components (one per route/tab)
+│   ├── BankAccountsListPage.tsx
+│   └── LabelsListPage.tsx
+├── components/       # Reusable UI components
+│   ├── BankAccountRow.tsx
+│   ├── EmptyOrErrorState.tsx
+│   ├── LabelRow.tsx
+│   ├── LabelManager.tsx
+│   ├── TransferImport.tsx
+│   └── TransferList.tsx
+├── services/         # API client layer
+│   ├── apiClient.ts          # Shared authenticated fetch helper
+│   ├── bankAccountsService.ts
+│   └── labelsService.ts
+tests/                    # Vitest unit/component tests
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## API Integration
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+All API calls go to the Symfony backend (configured via `VITE_API_URL`, default `http://localhost:8080`).
+Every request is authenticated with the Bearer token from `AuthContext`.
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+| Endpoint | Used by |
+|----------|---------|
+| `GET /api/bank-accounts` | BankAccountsListPage |
+| `GET /api/labels` | LabelsListPage |
+| `GET /api/transfers` | TransferList |
+| `POST /api/transfers/import` | TransferImport |
+
+> Bank accounts and labels are created as a side-effect of the CSV import feature
+> (see `specs/001-csv-import-transfers`). The list pages here are read-only views
+> of that data.
+
+## Getting Started
+
+```bash
+# Install dependencies
+npm install
+
+# Start dev server (or use docker compose from project root)
+npm run dev
+
+# Run tests
+npm run test
+
+# Build for production
+npm run build
+```
+
+## Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `VITE_API_URL` | `http://localhost:8080` | Base URL of the Symfony API backend |
+
+## Tests
+
+Tests live in `tests/` and use Vitest with `happy-dom` as the test environment.
+
+```bash
+npm run test               # watch mode
+npx vitest run             # single run
+npx vitest run --coverage  # with coverage report
 ```

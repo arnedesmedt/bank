@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { fetchBankAccounts, BankAccount } from '../services/bankAccountsService';
+import { fetchBankAccounts } from '../services/bankAccountsService';
+import type { BankAccount } from '../services/bankAccountsService';
 import BankAccountRow from '../components/BankAccountRow';
 import EmptyOrErrorState from '../components/EmptyOrErrorState';
 import { useAuth } from '../contexts/AuthContext';
@@ -71,3 +72,4 @@ const BankAccountsListPage: React.FC = () => {
 };
 
 export default BankAccountsListPage;
+

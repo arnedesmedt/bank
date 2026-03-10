@@ -1,5 +1,5 @@
 import React from 'react';
-import { Label } from '../services/labelsService';
+import type { Label } from '../services/labelsService';
 
 interface LabelRowProps {
     label: Label;
@@ -27,4 +27,5 @@ const LabelRow: React.FC<LabelRowProps> = ({ label }) => (
 );
 
 export default LabelRow;
+
 

@@ -1,5 +1,5 @@
 import React from 'react';
-import { BankAccount } from '../services/bankAccountsService';
+import type { BankAccount } from '../services/bankAccountsService';
 
 interface BankAccountRowProps {
     account: BankAccount;
@@ -14,3 +14,4 @@ const BankAccountRow: React.FC<BankAccountRowProps> = ({ account }) => (
 );
 
 export default BankAccountRow;
+

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { fetchLabels, Label } from '../services/labelsService';
+import { fetchLabels } from '../services/labelsService';
+import type { Label } from '../services/labelsService';
 import LabelRow from '../components/LabelRow';
 import EmptyOrErrorState from '../components/EmptyOrErrorState';
 import { useAuth } from '../contexts/AuthContext';
@@ -74,4 +75,5 @@ const LabelsListPage: React.FC = () => {
 };
 
 export default LabelsListPage;
+
 

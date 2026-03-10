@@ -16,6 +16,14 @@ use App\State\BankAccountItemProvider;
 use App\State\BankAccountStateProcessor;
 use App\State\BankAccountStateProvider;
 
+/**
+ * API resource for bank accounts.
+ *
+ * Bank accounts are created automatically when transfers are imported from
+ * CSV files via the transfer import feature (POST /api/transfers/import).
+ * Both the user's own accounts and counterparty accounts encountered during
+ * import are stored here. See specs/001-csv-import-transfers for details.
+ */
 #[ApiResource(
     shortName: 'BankAccount',
     operations: [

@@ -54,9 +54,9 @@ description: "Task list for Add List Pages feature implementation"
 
 ## Final Phase: Polish & Cross-Cutting Concerns
 
-- [ ] T020 Refactor code for clarity and maintainability in frontend/src/
-- [ ] T021 Update documentation in frontend/README.md and backend/README.md
-- [ ] T022 Ensure all new endpoints reference csv import transfers for provenance in backend/src/api/
+- [X] T020 Refactor code for clarity and maintainability in frontend/src/
+- [X] T021 Update documentation in frontend/README.md and backend/README.md
+- [X] T022 Ensure all new endpoints reference csv import transfers for provenance in backend/src/api/
 
 ## Dependencies
 
@@ -79,4 +79,5 @@ description: "Task list for Add List Pages feature implementation"
 - All tasks follow strict checklist format: checkbox, TaskID, [P] marker, [Story] label, file path
 - Each user story phase is independently testable
 - Parallel opportunities are clearly marked
+
 
