@@ -1,25 +1,25 @@
 import React, { useEffect, useState } from 'react';
-import { fetchBankAccounts, BankAccount } from '../services/bankAccountsService';
-import BankAccountRow from '../components/BankAccountRow';
+import { fetchLabels, Label } from '../services/labelsService';
+import LabelRow from '../components/LabelRow';
 import EmptyOrErrorState from '../components/EmptyOrErrorState';
 import { useAuth } from '../contexts/AuthContext';
 
-const BankAccountsListPage: React.FC = () => {
+const LabelsListPage: React.FC = () => {
     const { accessToken } = useAuth();
-    const [accounts, setAccounts] = useState<BankAccount[]>([]);
+    const [labels, setLabels] = useState<Label[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | undefined>(undefined);
 
     useEffect(() => {
         if (!accessToken) return;
 
-        fetchBankAccounts(accessToken)
+        fetchLabels(accessToken)
             .then((data) => {
-                setAccounts(data);
+                setLabels(data);
                 setLoading(false);
             })
             .catch(() => {
-                setError('Failed to load bank accounts.');
+                setError('Failed to load labels.');
                 setLoading(false);
             });
     }, [accessToken]);
@@ -35,32 +35,35 @@ const BankAccountsListPage: React.FC = () => {
     return (
         <div className="bg-white rounded-lg shadow">
             <div className="px-6 py-4 border-b border-gray-200">
-                <h1 className="text-xl font-semibold text-gray-900">Bank Accounts</h1>
+                <h1 className="text-xl font-semibold text-gray-900">Labels</h1>
             </div>
 
             <div className="px-6 py-4">
                 {error !== undefined ? (
                     <EmptyOrErrorState error={error} />
-                ) : accounts.length === 0 ? (
-                    <EmptyOrErrorState emptyMessage="No bank accounts found." />
+                ) : labels.length === 0 ? (
+                    <EmptyOrErrorState emptyMessage="No labels found." />
                 ) : (
                     <table className="min-w-full">
                         <thead>
                             <tr className="border-b border-gray-200">
                                 <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Account Name
+                                    Name
                                 </th>
                                 <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Account Number
+                                    Parent Label
                                 </th>
                                 <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Labels
+                                    Linked Accounts
+                                </th>
+                                <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Regexes
                                 </th>
                             </tr>
                         </thead>
                         <tbody>
-                            {accounts.map((account) => (
-                                <BankAccountRow key={account.id} account={account} />
+                            {labels.map((label) => (
+                                <LabelRow key={label.id} label={label} />
                             ))}
                         </tbody>
                     </table>
@@ -70,4 +73,5 @@ const BankAccountsListPage: React.FC = () => {
     );
 };
 
-export default BankAccountsListPage;
+export default LabelsListPage;
+

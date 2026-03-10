@@ -45,12 +45,12 @@ description: "Task list for Add List Pages feature implementation"
 **Goal**: List all labels with minimal UI, error/empty handling
 **Independent Test Criteria**: Visiting /labels displays all labels, empty state, and error state
 
-- [ ] T014 [P] [US2] Add route `/labels` to frontend/src/pages/LabelsListPage.tsx
-- [ ] T015 [P] [US2] Implement LabelsListPage component in frontend/src/pages/LabelsListPage.tsx
-- [ ] T016 [P] [US2] Render each label as row (name, description) in frontend/src/components/LabelRow.tsx
-- [ ] T017 [P] [US2] Integrate labelsService for data fetching in LabelsListPage.tsx
-- [ ] T018 [P] [US2] Handle empty/error states using EmptyOrErrorState.tsx in LabelsListPage.tsx
-- [ ] T019 [P] [US2] Add automated tests for rendering, empty/error states, and API integration in frontend/tests/LabelsListPage.test.tsx
+- [X] T014 [P] [US2] Add route `/labels` to frontend/src/pages/LabelsListPage.tsx
+- [X] T015 [P] [US2] Implement LabelsListPage component in frontend/src/pages/LabelsListPage.tsx
+- [X] T016 [P] [US2] Render each label as row (name, description) in frontend/src/components/LabelRow.tsx
+- [X] T017 [P] [US2] Integrate labelsService for data fetching in LabelsListPage.tsx
+- [X] T018 [P] [US2] Handle empty/error states using EmptyOrErrorState.tsx in LabelsListPage.tsx
+- [X] T019 [P] [US2] Add automated tests for rendering, empty/error states, and API integration in frontend/tests/LabelsListPage.test.tsx
 
 ## Final Phase: Polish & Cross-Cutting Concerns
 
@@ -79,3 +79,4 @@ description: "Task list for Add List Pages feature implementation"
 - All tasks follow strict checklist format: checkbox, TaskID, [P] marker, [Story] label, file path
 - Each user story phase is independently testable
 - Parallel opportunities are clearly marked
+

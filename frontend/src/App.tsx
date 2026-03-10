@@ -3,9 +3,15 @@ import { LoginForm } from './components/LoginForm';
 import { TransferImport } from './components/TransferImport';
 import { TransferList } from './components/TransferList';
 import { LabelManager } from './components/LabelManager';
+import BankAccountsListPage from './pages/BankAccountsListPage';
+import LabelsListPage from './pages/LabelsListPage';
+import React, { useState } from 'react';
+
+type Page = 'transfers' | 'bank-accounts' | 'labels';
 
 function AppContent() {
   const { isAuthenticated, isLoading, user, logout } = useAuth();
+  const [currentPage, setCurrentPage] = useState<Page>('transfers');
 
   if (isLoading) {
     return (
@@ -21,6 +27,12 @@ function AppContent() {
   if (!isAuthenticated) {
     return <LoginForm />;
   }
+
+  const navItems: { id: Page; label: string }[] = [
+    { id: 'transfers', label: 'Transfers' },
+    { id: 'bank-accounts', label: 'Bank Accounts' },
+    { id: 'labels', label: 'Labels' },
+  ];
 
   return (
     <div className="min-h-screen bg-gray-100">
@@ -39,16 +51,37 @@ function AppContent() {
               Sign Out
             </button>
           </div>
+
+          {/* Navigation tabs */}
+          <nav className="mt-4 flex space-x-1">
+            {navItems.map((item) => (
+              <button
+                key={item.id}
+                onClick={() => setCurrentPage(item.id)}
+                className={`px-4 py-2 text-sm font-medium rounded-md transition-colors duration-150 ${
+                  currentPage === item.id
+                    ? 'bg-blue-600 text-white'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                }`}
+              >
+                {item.label}
+              </button>
+            ))}
+          </nav>
         </div>
       </header>
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="space-y-6">
-          <LabelManager />
-          <TransferImport />
-          <TransferList />
-        </div>
+        {currentPage === 'transfers' && (
+          <div className="space-y-6">
+            <LabelManager />
+            <TransferImport />
+            <TransferList />
+          </div>
+        )}
+        {currentPage === 'bank-accounts' && <BankAccountsListPage />}
+        {currentPage === 'labels' && <LabelsListPage />}
       </main>
     </div>
   );
