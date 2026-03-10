@@ -24,9 +24,9 @@ description: "Task list for Add List Pages feature implementation"
 
 **Purpose**: Shared utilities/services for API calls and error handling
 
-- [ ] T005 [P] Create API service for fetching bank accounts in frontend/src/services/bankAccountsService.ts
-- [ ] T006 [P] Create API service for fetching labels in frontend/src/services/labelsService.ts
-- [ ] T007 [P] Create shared error/empty state component in frontend/src/components/EmptyOrErrorState.tsx
+- [X] T005 [P] Create API service for fetching bank accounts in frontend/src/services/bankAccountsService.ts
+- [X] T006 [P] Create API service for fetching labels in frontend/src/services/labelsService.ts
+- [X] T007 [P] Create shared error/empty state component in frontend/src/components/EmptyOrErrorState.tsx
 
 ## Phase 3: User Story 1 - View Bank Accounts List (Priority: P1)
 
