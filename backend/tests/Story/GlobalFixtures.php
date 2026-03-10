@@ -11,11 +11,9 @@ class GlobalFixtures extends Story
 {
     public function build(): void
     {
-        // Password hasher must be set before loading this story
-        UserFactory::createOne(
-            [
-                'email' => UserFactory::ADMIN_EMAIL,
-            ],
-        );
+        // Password hasher must be set before loading this story via UserFactory::setPasswordHasher()
+        UserFactory::createOne([
+            'email' => UserFactory::ADMIN_EMAIL,
+        ]);
     }
 }

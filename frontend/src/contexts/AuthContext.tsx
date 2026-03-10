@@ -8,6 +8,7 @@ interface User {
 
 interface AuthContextType {
     user: User | null;
+    accessToken: string | null;
     isAuthenticated: boolean;
     isLoading: boolean;
     login: (email: string, password: string) => Promise<void>;
@@ -31,6 +32,7 @@ interface AuthProviderProps {
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const [user, setUser] = useState<User | null>(null);
+    const [accessToken, setAccessToken] = useState<string | null>(localStorage.getItem('access_token'));
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -95,6 +97,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
             const data = await response.json();
             localStorage.setItem('access_token', data.access_token);
+            setAccessToken(data.access_token);
 
             // Fetch user info
             const userResponse = await fetch(`${import.meta.env.VITE_API_URL}/api/me`, {
@@ -119,12 +122,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     const logout = () => {
         localStorage.removeItem('access_token');
+        setAccessToken(null);
         setUser(null);
         setError(null);
     };
 
     const value: AuthContextType = {
         user,
+        accessToken,
         isAuthenticated: !!user,
         isLoading,
         login,

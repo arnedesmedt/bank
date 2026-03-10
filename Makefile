@@ -71,8 +71,8 @@ db-reset: ## Reset database (drop, create, migrate)
 	cd $(ROOT_DIR) && docker compose exec -e XDEBUG_MODE=off php bin/console doctrine:migrations:migrate --no-interaction
 
 fixtures-load: ## Load development fixtures
-	cd $(ROOT_DIR) && docker compose exec -e XDEBUG_MODE=off php bin/console foundry:load-fixtures --no-interaction
 	cd $(ROOT_DIR) && docker compose exec -e XDEBUG_MODE=off php bin/console doctrine:fixtures:load --no-interaction
+	cd $(ROOT_DIR) && docker compose exec -e XDEBUG_MODE=off php bin/console foundry:load-stories --no-interaction --append
 
 install-backend: ## Install backend dependencies
 	cd $(ROOT_DIR) && docker compose exec -e XDEBUG_MODE=off php composer install

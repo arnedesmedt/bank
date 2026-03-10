@@ -1,5 +1,8 @@
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { LoginForm } from './components/LoginForm';
+import { TransferImport } from './components/TransferImport';
+import { TransferList } from './components/TransferList';
+import { LabelManager } from './components/LabelManager';
 
 function AppContent() {
   const { isAuthenticated, isLoading, user, logout } = useAuth();
@@ -20,26 +23,33 @@ function AppContent() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center p-8">
-      <div className="bg-white rounded-lg shadow-2xl p-8 max-w-md w-full">
-        <h1 className="text-3xl font-bold text-gray-800 mb-4">Bank Application</h1>
-        <p className="text-gray-600 mb-6">Welcome, {user?.email}!</p>
-        <div className="mb-6">
-          <p className="text-sm text-gray-500 mb-4">You are successfully authenticated.</p>
-          <button
-            onClick={logout}
-            className="bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded transition duration-200 w-full"
-          >
-            Sign Out
-          </button>
+    <div className="min-h-screen bg-gray-100">
+      {/* Header */}
+      <header className="bg-white shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">Bank Application</h1>
+              <p className="text-sm text-gray-600">Welcome, {user?.email}</p>
+            </div>
+            <button
+              onClick={logout}
+              className="bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded transition duration-200"
+            >
+              Sign Out
+            </button>
+          </div>
         </div>
-        <div className="text-sm text-gray-500 text-center">
-          <p className="mt-2">
-            Edit <code className="bg-gray-100 px-2 py-1 rounded">src/App.tsx</code> to continue
-            development
-          </p>
+      </header>
+
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="space-y-6">
+          <LabelManager />
+          <TransferImport />
+          <TransferList />
         </div>
-      </div>
+      </main>
     </div>
   );
 }

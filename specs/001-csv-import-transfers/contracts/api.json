@@ -8,7 +8,7 @@
   "paths": {
     "/transfers/import": {
       "post": {
-        "summary": "Import CSV file",
+        "summary": "Import CSV file (API Platform custom operation)",
         "requestBody": {
           "content": {
             "multipart/form-data": {
@@ -35,54 +35,60 @@
           "401": {
             "description": "Unauthorized"
           }
-        }
+        },
+        "x-api-platform-operation": "Custom #[Post] operation on TransferImportDTO resource, handled by custom controller/DataTransformer"
       }
     },
     "/transfers": {
       "get": {
-        "summary": "List transfers",
-        "parameters": [
-          {
-            "name": "page",
-            "in": "query",
-            "schema": {"type": "integer"}
-          },
-          {
-            "name": "sort",
-            "in": "query",
-            "schema": {"type": "string"}
-          },
-          {
-            "name": "filter",
-            "in": "query",
-            "schema": {"type": "string"}
-          }
-        ],
+        "summary": "List transfers (DTO output)",
         "responses": {
           "200": {
-            "description": "List of transfers"
-          },
-          "401": {
-            "description": "Unauthorized"
+            "description": "List of transfers",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TransferOutputDTO"
+                  }
+                }
+              }
+            }
           }
         }
       }
     }
   },
   "components": {
-    "securitySchemes": {
-      "OAuth2": {
-        "type": "oauth2",
-        "flows": {
-          "authorizationCode": {
-            "authorizationUrl": "https://auth.example.com/oauth/authorize",
-            "tokenUrl": "https://auth.example.com/oauth/token",
-            "scopes": {}
-          }
+    "schemas": {
+      "TransferImportDTO": {
+        "type": "object",
+        "properties": {
+          "date": { "type": "string", "format": "date" },
+          "amount": { "type": "number", "format": "decimal" },
+          "currency": { "type": "string" },
+          "from_account": { "type": "string" },
+          "to_account": { "type": "string" },
+          "reference": { "type": "string" },
+          "transaction_id": { "type": "string" }
+        },
+        "required": ["date", "amount", "currency", "from_account", "to_account", "reference"]
+      },
+      "TransferOutputDTO": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "date": { "type": "string", "format": "date" },
+          "amount": { "type": "number", "format": "decimal" },
+          "currency": { "type": "string" },
+          "from_account": { "type": "string" },
+          "to_account": { "type": "string" },
+          "reference": { "type": "string" },
+          "labels": { "type": "array", "items": { "type": "string" } },
+          "transaction_id": { "type": "string" }
         }
       }
     }
-  },
-  "security": [{"OAuth2": []}]
+  }
 }
-

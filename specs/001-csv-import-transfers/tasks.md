@@ -44,69 +44,41 @@ description: "Task list for CSV Import Transfers feature"
 **Goal**: User uploads CSV, system parses, persists, deduplicates, links to accounts, auto-labels transfers.
 **Independent Test Criteria**: Upload CSV, verify transfers imported, no duplicates, auto-labeled.
 
-- [ ] T015 [US1] Implement BankAccount entity, repository, and migration (backend/src/Entity/BankAccount.php, backend/migrations/)
-- [ ] T016 [P] [US1] Implement Label entity, repository, and migration (backend/src/Entity/Label.php, backend/migrations/)
-- [ ] T017 [P] [US1] Implement Transfer entity, repository, and migration (backend/src/Entity/Transfer.php, backend/migrations/)
-- [ ] T018 [P] [US1] Implement CSV import service for Belfius format (backend/src/Service/CsvImportService.php)
-- [ ] T019 [P] [US1] Implement idempotency logic (transaction_id or fingerprint) in backend/src/Service/TransferService.php
-- [ ] T020 [P] [US1] Implement auto-labeling logic (regex, bank account) in backend/src/Service/LabelingService.php
-- [ ] T021 [P] [US1] Implement internal transfer detection/exclusion logic in backend/src/Service/TransferService.php
-- [ ] T022 [P] [US1] Implement /transfers/import endpoint per OpenAPI contract (backend/src/Controller/TransferImportController.php)
-- [ ] T023 [P] [US1] Implement /transfers endpoint (list, filter, sort, paginate) per OpenAPI contract (backend/src/Controller/TransferController.php)
-- [ ] T024 [P] [US1] Implement frontend CSV upload UI with progress/error handling (frontend/src/components/TransferImport.tsx)
-- [ ] T025 [P] [US1] Implement frontend transfer list UI (paginated, sortable, filterable) (frontend/src/components/TransferList.tsx)
-- [ ] T026 [P] [US1] Implement Redux/Context state for transfers, accounts, labels (frontend/src/state/)
-- [ ] T027 [P] [US1] Implement integration/unit tests for CSV import, idempotency, auto-labeling, endpoints (backend/tests/)
-- [ ] T028 [P] [US1] Implement integration/unit tests for frontend CSV import and transfer list (frontend/tests/)
-
----
-
-## Phase 4: User Story 2 - Manage Labels (P2)
-
-**Goal**: User manages labels, parent-child relationships, auto-linking, and auto-labeling.
-**Independent Test Criteria**: Create labels, set parent-child, link to transfers, verify auto-linking/labeling.
-
-- [ ] T029 [US2] Implement parent-child label relationship logic (backend/src/Entity/Label.php, backend/src/Service/LabelService.php)
-- [ ] T030 [P] [US2] Implement linking labels to bank accounts and regexes (backend/src/Service/LabelService.php)
-- [ ] T031 [P] [US2] Implement frontend label management UI (create, edit, parent-child, link to accounts/regexes) (frontend/src/components/LabelManager.tsx)
-- [ ] T032 [P] [US2] Implement backend/DB tests for label hierarchy and auto-linking (backend/tests/)
-- [ ] T033 [P] [US2] Implement frontend tests for label management (frontend/tests/)
-
----
-
-## Phase 5: User Story 3 - View Statistics & Graphs (P3)
-
-**Goal**: User views statistics, graphs, max values/percentages, remaining budget.
-**Independent Test Criteria**: Select date range/labels, verify graphs and max values.
-
-- [ ] T034 [US3] Implement backend endpoints for statistics and label max values (backend/src/Controller/StatisticsController.php)
-- [ ] T035 [P] [US3] Implement backend logic for statistics aggregation (backend/src/Service/StatisticsService.php)
-- [ ] T036 [P] [US3] Implement frontend statistics/graphs UI (circle diagrams, bar charts) (frontend/src/components/Statistics.tsx)
-- [ ] T037 [P] [US3] Implement frontend logic for max value/percentage visualization (frontend/src/components/LabelBudget.tsx)
-- [ ] T038 [P] [US3] Implement backend/frontend tests for statistics and graphs (backend/tests/, frontend/tests/)
-
----
-
-## Final Phase: Polish & Cross-Cutting Concerns
-
-- [ ] T039 Add edge case handling for unsupported CSV, missing transaction_id, multiple label matches, internal transfers (backend/src/Service/CsvImportService.php, TransferService.php)
-- [ ] T040 [P] Add frontend error handling and debugging UI for import steps (frontend/src/components/TransferImport.tsx)
-- [ ] T041 [P] Add documentation for endpoints, entities, and usage (backend/README.md, frontend/README.md)
-- [ ] T042 [P] Add CI/CD pipeline config for quality gates (lint, tests, static analysis) (.github/workflows/)
-- [ ] T043 [P] Final code review and constitution/quality gate check (all files)
+- [x] T015 [US1] Implement BankAccount entity, repository, and migration (backend/src/Entity/BankAccount.php, backend/migrations/)
+- [x] T016 [P] [US1] Implement Label entity, repository, and migration (backend/src/Entity/Label.php, backend/migrations/)
+- [x] T017 [P] [US1] Implement Transfer entity, repository, and migration (backend/src/Entity/Transfer.php, backend/migrations/)
+- [x] T018 [P] [US1] Implement CSV import service for Belfius format (backend/src/Service/CsvImportService.php)
+- [x] T019 [P] [US1] Implement idempotency logic (transaction_id or fingerprint) in backend/src/Service/TransferService.php
+- [x] T020 [P] [US1] Implement auto-labeling logic (regex, bank account) in backend/src/Service/LabelingService.php
+- [x] T021 [P] [US1] Implement internal transfer detection/exclusion logic in backend/src/Service/TransferService.php
+- [x] T022 [P] [US1] Implement /transfers/import endpoint per OpenAPI contract (backend/src/Controller/TransferImportController.php)
+- [x] T023 [P] [US1] Implement /transfers endpoint (list, filter, sort, paginate) per OpenAPI contract (backend/src/Controller/TransferController.php)
+- [x] T024 [P] [US1] Implement frontend CSV upload UI with progress/error handling (frontend/src/components/TransferImport.tsx)
+- [x] T025 [P] [US1] Implement frontend transfer list UI (paginated, sortable, filterable) (frontend/src/components/TransferList.tsx)
+- [x] T026 [P] [US1] Implement Redux/Context state for transfers, accounts, labels (frontend/src/state/) - Using React hooks and AuthContext
+- [x] T027 [P] [US1] Implement integration/unit tests for CSV import, idempotency, auto-labeling, endpoints (backend/tests/)
+- [x] T028 [P] [US1] Implement integration/unit tests for frontend CSV import and transfer list (frontend/tests/)
+- [x] T044 [P] [US1] Create TransferApiResource DTO class in backend/src/ApiResource/TransferApiResource.php
+- [x] T045 [P] [US1] Create BankAccountApiResource DTO class in backend/src/ApiResource/BankAccountApiResource.php
+- [x] T046 [P] [US1] Create LabelApiResource DTO class in backend/src/ApiResource/LabelApiResource.php
+- [x] T047 [US1] Refactor Transfer endpoints to use TransferApiResource DTO (backend/src/Controller/TransferController.php, backend/config/routes.yaml)
+- [x] T048 [US1] Refactor Transfer import endpoint to use TransferApiResource DTO (backend/src/Controller/TransferImportController.php)
+- [x] T049 [US1] Refactor BankAccount and Label endpoints to use respective DTOs (backend/src/Controller/BankAccountController.php, LabelController.php)
+- [x] T050 [US1] Implement and configure Symfony object mapper/DataTransformer for DTO <-> Entity mapping (backend/src/Service/ObjectMapperService.php, backend/config/services.yaml)
+- [x] T051 [US1] Update API Platform resource configuration to expose DTOs (backend/config/api_platform/transfer.yaml, bank_account.yaml, label.yaml)
+- [x] T052 [US1] Update unit/integration tests for DTO/entity mapping and endpoints (backend/tests/Api/TransferApiResourceTest.php, BankAccountApiResourceTest.php, LabelApiResourceTest.php)
+- [x] T053 [US1] Update migrations if entity structure changes due to DTO/entity split (backend/migrations/)
 
 ---
 
 ## Dependencies
 
-- Phase 1 → Phase 2 → US1 (Phase 3) → US2 (Phase 4) → US3 (Phase 5) → Polish
-- US1, US2, US3 are independently testable after their phase
+- Phase 1 → Phase 2 → US1 (Phase 3)
+- US1 is independently testable after its phase
 
 ## Parallel Execution Examples
 
 - T016, T017, T018, T019, T020, T021, T022, T023, T024, T025, T026, T027, T028 can be run in parallel after T015
-- T030, T031, T032, T033 can be run in parallel after T029
-- T035, T036, T037, T038 can be run in parallel after T034
 
 ## Implementation Strategy
 
@@ -116,5 +88,3 @@ description: "Task list for CSV Import Transfers feature"
 ## Format Validation
 
 - All tasks follow strict checklist format: checkbox, ID, [P] if parallel, [USx] if user story, file path
-
-

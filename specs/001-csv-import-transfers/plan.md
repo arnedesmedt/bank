@@ -1,39 +1,51 @@
 # Implementation Plan: CSV Import Transfers
 
-**Branch**: `001-csv-import-transfers` | **Date**: February 24, 2026 | **Spec**: /specs/001-csv-import-transfers/spec.md
+**Branch**: `001-csv-import-transfers` | **Date**: March 10, 2026 | **Spec**: [link]
 **Input**: Feature specification from `/specs/001-csv-import-transfers/spec.md`
 
 ## Summary
 
-This plan covers the backend and frontend implementation for the CSV import feature, supporting multiple bank formats (first: Belfius). Backend uses PHP 8.5, Symfony 8.x, API Platform (JSON, docs disabled), Doctrine, PostgreSQL, Docker Compose, Xdebug, grumphp, and OAuth2. Frontend uses React, Vite, TypeScript, TailwindCSS, and OAuth2. DevOps includes tmuxinator config for container orchestration and logs. All requirements, quality gates, and edge cases from the feature spec and constitution are addressed.
+Architectural update: Doctrine entities are now separated from ApiResource classes for the Transfer domain. Symfony's object mapper will be used to map incoming ApiResource DTOs to Doctrine entities and vice versa, following API Platform's DTO guidance (https://api-platform.com/docs/core/dto/).
 
 ## Technical Context
 
-**Language/Version**: PHP 8.5 (backend), TypeScript (frontend)  
-**Primary Dependencies**: Symfony 8.x, API Platform, Doctrine ORM, PostgreSQL, Xdebug, grumphp, React, Vite, TailwindCSS, OAuth2  
+**Language/Version**: PHP 8.4, Symfony 8.x, API Platform 4.x  
+**Primary Dependencies**: Symfony, API Platform, Doctrine ORM, Symfony ObjectMapper (NEEDS CLARIFICATION: exact mapping configuration)  
 **Storage**: PostgreSQL  
-**Testing**: grumphp (phpstan, phpmd, phpcs with doctrine coding standard, rector), Integration tests (API Platform, fixtures), Unit tests (backend/frontend)  
-**Target Platform**: Linux (Docker Compose), modern browsers  
-**Project Type**: REST API web-service (backend), SPA (frontend)  
+**Testing**: PHPUnit, API Platform Test, Symfony Test  
+**Target Platform**: Linux server  
+**Project Type**: web-service (REST API)  
 **Performance Goals**: <2s API response for main queries, handle 10,000 transfers per import  
-**Constraints**: Idempotency, data integrity, extensibility, security (OWASP), Xdebug enabled, OAuth2 authentication  
-**Scale/Scope**: Multi-bank, multi-user, extensible for new formats/features
+**Constraints**: Idempotency, data integrity, separation of concerns, extensibility  
+**Scale/Scope**: Multiple banks, 10k+ users, 10k+ transfers per import
+
+**Architectural Change**:
+- Doctrine entities and ApiResource DTOs are now separate for Transfer domain.
+- Symfony's object mapper will handle mapping between DTOs and entities. Configure the object mapper via attributes
+- API Platform will expose DTOs as resources, not entities directly. You can use input and output DTOs for different operations if needed.
+- Validation, persistence, and business logic will operate on entities; API input/output will use DTOs.
+
+**Unknowns/Clarifications Needed**:
+- NEEDS CLARIFICATION: DTO structure for Transfer import (fields, validation).
+- NEEDS CLARIFICATION: Mapping patterns for nested/related entities (e.g., BankAccount, Label).
+- NEEDS CLARIFICATION: How to handle idempotency and deduplication in DTO/entity mapping.
 
 ## Constitution Check
 
-- Separation of Concerns: Decoupled SPA and REST API, JSON only
-- Data Integrity/Idempotency: Deduplication, validation, provenance, no duplicates
-- Extensibility/Maintainability: Support new banks, visualizations, endpoints
-- Quality/Testability: Automated tests, PSR-12, static analysis, CI/CD
-- Security/Privacy: OWASP Top 10, secure file uploads, API endpoints
-- Technical Constraints: REST API, file upload, entity persistence, stateless auth, SPA, large CSV, progress/error, multi-bank, visualizations, performance, documentation, demo, reversible migrations
+*GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
+
+- Separation of Concerns: Architectural change supports this principle.
+- Data Integrity and Idempotency: Must ensure deduplication and validation in mapping logic.
+- Extensibility and Maintainability: DTO/entity split improves maintainability and supports new formats.
+- Quality and Testability: Mapping logic must be covered by tests.
+- Security and Privacy: No direct entity exposure; DTOs validated and mapped securely.
 
 ## Project Structure
 
 ### Documentation (this feature)
 
 ```text
-specs/001-csv-import-transfers/
+specs/[###-feature]/
 ├── plan.md              # This file (/speckit.plan command output)
 ├── research.md          # Phase 0 output (/speckit.plan command)
 ├── data-model.md        # Phase 1 output (/speckit.plan command)
@@ -43,23 +55,38 @@ specs/001-csv-import-transfers/
 ```
 
 ### Source Code (repository root)
+<!--
+  ACTION REQUIRED: Replace the placeholder tree below with the concrete layout
+  for this feature. Delete unused options and expand the chosen structure with
+  real paths (e.g., apps/admin, packages/something). The delivered plan must
+  not include Option labels.
+-->
 
 ```text
+# Web application (when "frontend" + "backend" detected)
 backend/
 ├── src/
-├── tests/
-├── docker/
-├── .env
-├── composer.json
+│   ├── models/
+│   ├── services/
+│   └── api/
+└── tests/
+
 frontend/
 ├── src/
-├── tests/
-├── vite.config.ts
-├── package.json
-devops/
-├── tmuxinator.yml
+│   ├── components/
+│   ├── pages/
+│   └── services/
+└── tests/
 ```
+
+**Structure Decision**: [Document the selected structure and reference the real
+directories captured above]
 
 ## Complexity Tracking
 
-> No constitution violations. All gates pass.
+> **Fill ONLY if Constitution Check has violations that must be justified**
+
+| Violation | Why Needed | Simpler Alternative Rejected Because |
+|-----------|------------|-------------------------------------|
+| [e.g., 4th project] | [current need] | [why 3 projects insufficient] |
+| [e.g., Repository pattern] | [specific problem] | [why direct DB access insufficient] |

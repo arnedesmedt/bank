@@ -2,12 +2,12 @@
 
 ## Entities
 
-### BankAccount
+### BankAccount (Doctrine Entity)
 - account_name: string
 - account_number: string (unique)
 - linked_labels: [Label] (many-to-many)
 
-### Transfer
+### Transfer (Doctrine Entity)
 - amount: decimal
 - date: date
 - from_account: BankAccount (many-to-one)
@@ -18,13 +18,39 @@
 - transaction_id: string (nullable, unique if present)
 - fingerprint: string (composite: date+amount+from+to+reference)
 
-### Label
+### Label (Doctrine Entity)
 - name: string
 - parent_label: Label (nullable, one-to-many)
 - linked_bank_accounts: [BankAccount] (many-to-many)
 - linked_regexes: [string]
 - max_value: decimal (optional)
 - max_percentage: decimal (optional)
+
+---
+
+## DTOs (ApiResource)
+
+### TransferImportDTO
+- date: date
+- amount: decimal
+- currency: string
+- from_account: string (account number)
+- to_account: string (account number)
+- reference: string
+- transaction_id: string (nullable)
+
+### TransferOutputDTO
+- id: string
+- date: date
+- amount: decimal
+- currency: string
+- from_account: string (account number)
+- to_account: string (account number)
+- reference: string
+- labels: [string] (label names)
+- transaction_id: string (nullable)
+
+---
 
 ## Relationships
 - Transfer <-> BankAccount: from_account, to_account
@@ -35,12 +61,11 @@
 ## Validation Rules
 - Transfers must be unique by transaction_id (if present) or fingerprint.
 - Internal transfers (from and to both user-owned) are persisted but excluded from statistics/labeling.
-- CSV files must match supported format (delimiter, encoding, date format).
-- Labels auto-applied if regex or bank account matches.
-- Parent label auto-linked if child label applied.
 
 ## State Transitions
-- Transfer: imported -> labeled -> included/excluded from statistics
-- Label: created -> linked -> max value/percentage set
-- BankAccount: created -> linked to labels
+- TransferImportDTO -> Transfer (via DataTransformer)
+- Transfer -> TransferOutputDTO (via DataTransformer)
 
+---
+
+Entities and DTOs are now separated. Mapping is handled by Symfony's object mapper/DataTransformer. API Platform exposes DTOs as resources; entities are internal.

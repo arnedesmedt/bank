@@ -7,4 +7,11 @@ when@test:
             resource: '%kernel.project_dir%/tests/Factory/'
             autowire: true
             autoconfigure: true
-
+        App\Tests\Story\:
+            resource: '%kernel.project_dir%/tests/Story/'
+            autowire: true
+            autoconfigure: true
+        App\Tests\DataFixtures\:
+            resource: '%kernel.project_dir%/tests/DataFixtures/'
+            autowire: true
+            autoconfigure: true

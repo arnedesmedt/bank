@@ -8,6 +8,9 @@
 5. Run `grumphp run` for linting.
 6. Run tests: `phpunit` for unit/integration tests.
 7. API available at `/api` (JSON only, docs disabled).
+8. All endpoints are defined using API Platform API Resource attributes (#[ApiResource], #[Post], #[GetCollection], etc.).
+9. CSV import endpoint uses TransferImportDTO as input, mapped to Transfer entity via DataTransformer (see API Platform DTO guidance).
+10. TransferOutputDTO is used for output; entities are not exposed directly.
 
 ## Frontend
 1. Navigate to `frontend/`.
@@ -28,6 +31,8 @@
 
 ## CSV Import
 - Upload CSV via frontend; backend parses, deduplicates, persists, auto-labels transfers.
+- CSV import endpoint is a custom API Platform operation (#[Post]) handled by a custom controller/DataTransformer.
+- Input: TransferImportDTO; Output: TransferOutputDTO.
 - Errors and progress shown in frontend UI.
 
 ## Edge Cases
@@ -36,3 +41,6 @@
 - Multiple label matches: all applied.
 - Missing Transaction ID: use fingerprint for idempotency.
 
+---
+
+Entities and DTOs are separated. Mapping is handled by Symfony's object mapper/DataTransformer. API Platform exposes DTOs as resources; entities are internal.
