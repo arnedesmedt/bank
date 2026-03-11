@@ -1,6 +1,6 @@
 # Feature Specification: Add List Pages
 
-**Feature Branch**: `001-add-list-pages`  
+**Feature Branch**: `002-add-list-pages`  
 **Created**: March 10, 2026  
 **Status**: Draft  
 **Input**: User description: "Add two new frontend pages: one for listing bank accounts and one for listing labels. The pages should display a simple list of each entity, with no additional features or interactions. The specification should reference the existing csv import transfers functionality and clarify that these new pages are strictly for listing bank accounts and labels, nothing more."

@@ -4,7 +4,7 @@ description: "Task list for Add List Pages feature implementation"
 
 # Tasks: Add List Pages
 
-**Input**: Design documents from `/specs/001-add-list-pages/`
+**Input**: Design documents from `/specs/002-add-list-pages/`
 **Prerequisites**: plan.md, spec.md, research.md, data-model.md, contracts/
 
 **Tests**: Automated tests are required for list rendering, empty/error states, and API integration (per spec and research).

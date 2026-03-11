@@ -8,7 +8,7 @@ This feature adds two new pages to the React frontend:
 Both pages fetch data from the Symfony API backend, display a simple list, and handle empty/error states with minimal UI.
 
 ## Steps
-1. Checkout branch `001-add-list-pages`.
+1. Checkout branch `002-add-list-pages`.
 2. Add routes for `/bank-accounts` and `/labels` in React Router.
 3. Create `BankAccountsListPage` and `LabelsListPage` components in `frontend/src/pages/`.
 4. Use Fetch API to call `/api/bank-accounts` and `/api/labels`.

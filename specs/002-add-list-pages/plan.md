@@ -1,7 +1,7 @@
 # Implementation Plan: Add List Pages
 
-**Branch**: `001-add-list-pages` | **Date**: March 10, 2026 | **Spec**: /specs/001-add-list-pages/spec.md
-**Input**: Feature specification from `/specs/001-add-list-pages/spec.md`
+**Branch**: `002-add-list-pages` | **Date**: March 10, 2026 | **Spec**: /specs/002-add-list-pages/spec.md
+**Input**: Feature specification from `/specs/002-add-list-pages/spec.md`
 
 ## Summary
 

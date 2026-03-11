@@ -1,51 +1,38 @@
-# Implementation Plan: CSV Import Transfers
+# Implementation Plan: Backend Account Features
 
-**Branch**: `001-csv-import-transfers` | **Date**: March 10, 2026 | **Spec**: [link]
-**Input**: Feature specification from `/specs/001-csv-import-transfers/spec.md`
+**Branch**: `003-backend-account-features` | **Date**: March 11, 2026 | **Spec**: [/specs/003-backend-account-features/spec.md]
+**Input**: Feature specification from `/specs/003-backend-account-features/spec.md`
 
 ## Summary
 
-Architectural update: Doctrine entities are now separated from ApiResource classes for the Transfer domain. Symfony's object mapper will be used to map incoming ApiResource DTOs to Doctrine entities and vice versa, following API Platform's DTO guidance (https://api-platform.com/docs/core/dto/).
+Implement stricter handling and normalization of bank account properties, internal account marking, transfer filtering, balance calculation, and removal of owner properties. The backend will enforce uniqueness via a hash property, normalize account numbers, mark internal accounts, filter reversed internal transfers, calculate total balances, and remove owner properties from relevant entities.
 
 ## Technical Context
 
-**Language/Version**: PHP 8.4, Symfony 8.x, API Platform 4.x  
-**Primary Dependencies**: Symfony, API Platform, Doctrine ORM, Symfony ObjectMapper (NEEDS CLARIFICATION: exact mapping configuration)  
-**Storage**: PostgreSQL  
-**Testing**: PHPUnit, API Platform Test, Symfony Test  
+**Language/Version**: PHP (Symfony), NEEDS CLARIFICATION for version  
+**Primary Dependencies**: Symfony, Doctrine ORM, API Platform, NEEDS CLARIFICATION for versions  
+**Storage**: PostgreSQL or MySQL, NEEDS CLARIFICATION  
+**Testing**: PHPUnit, grumphp, NEEDS CLARIFICATION for coverage  
 **Target Platform**: Linux server  
-**Project Type**: web-service (REST API)  
-**Performance Goals**: <2s API response for main queries, handle 10,000 transfers per import  
-**Constraints**: Idempotency, data integrity, separation of concerns, extensibility  
-**Scale/Scope**: Multiple banks, 10k+ users, 10k+ transfers per import
-
-**Architectural Change**:
-- Doctrine entities and ApiResource DTOs are now separate for Transfer domain.
-- Symfony's object mapper will handle mapping between DTOs and entities. Configure the object mapper via attributes
-- API Platform will expose DTOs as resources, not entities directly. You can use input and output DTOs for different operations if needed.
-- Validation, persistence, and business logic will operate on entities; API input/output will use DTOs.
-
-**Unknowns/Clarifications Needed**:
-- NEEDS CLARIFICATION: DTO structure for Transfer import (fields, validation).
-- NEEDS CLARIFICATION: Mapping patterns for nested/related entities (e.g., BankAccount, Label).
-- NEEDS CLARIFICATION: How to handle idempotency and deduplication in DTO/entity mapping.
+**Project Type**: web-service (REST API backend)  
+**Performance Goals**: <2s API response for main queries  
+**Constraints**: Data integrity, idempotency, reversible migrations  
+**Scale/Scope**: 10k+ transfers per import
 
 ## Constitution Check
 
-*GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
-
-- Separation of Concerns: Architectural change supports this principle.
-- Data Integrity and Idempotency: Must ensure deduplication and validation in mapping logic.
-- Extensibility and Maintainability: DTO/entity split improves maintainability and supports new formats.
-- Quality and Testability: Mapping logic must be covered by tests.
-- Security and Privacy: No direct entity exposure; DTOs validated and mapped securely.
+- Separation of Concerns: Backend REST API, strict HTTP/JSON
+- Data Integrity and Idempotency: Deduplication, validation, traceable provenance, reversible migrations
+- Extensibility and Maintainability: Support for new formats, endpoints, minimal code duplication
+- Quality and Testability: Automated tests, PSR-12, static analysis, CI/CD
+- Security and Privacy: Secure endpoints, sensitive data handling
 
 ## Project Structure
 
 ### Documentation (this feature)
 
 ```text
-specs/[###-feature]/
+specs/003-backend-account-features/
 ├── plan.md              # This file (/speckit.plan command output)
 ├── research.md          # Phase 0 output (/speckit.plan command)
 ├── data-model.md        # Phase 1 output (/speckit.plan command)
@@ -55,38 +42,9 @@ specs/[###-feature]/
 ```
 
 ### Source Code (repository root)
-<!--
-  ACTION REQUIRED: Replace the placeholder tree below with the concrete layout
-  for this feature. Delete unused options and expand the chosen structure with
-  real paths (e.g., apps/admin, packages/something). The delivered plan must
-  not include Option labels.
--->
 
 ```text
-# Web application (when "frontend" + "backend" detected)
-backend/
-├── src/
-│   ├── models/
-│   ├── services/
-│   └── api/
-└── tests/
-
-frontend/
-├── src/
-│   ├── components/
-│   ├── pages/
-│   └── services/
-└── tests/
+backend/src/
+backend/migrations/
 ```
 
-**Structure Decision**: [Document the selected structure and reference the real
-directories captured above]
-
-## Complexity Tracking
-
-> **Fill ONLY if Constitution Check has violations that must be justified**
-
-| Violation | Why Needed | Simpler Alternative Rejected Because |
-|-----------|------------|-------------------------------------|
-| [e.g., 4th project] | [current need] | [why 3 projects insufficient] |
-| [e.g., Repository pattern] | [specific problem] | [why direct DB access insufficient] |
