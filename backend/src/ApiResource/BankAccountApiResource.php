@@ -15,6 +15,7 @@ use App\State\BankAccountDeleteProcessor;
 use App\State\BankAccountItemProvider;
 use App\State\BankAccountStateProcessor;
 use App\State\BankAccountStateProvider;
+use App\State\TransfersByAccountProvider;
 
 /**
  * API resource for bank accounts.
@@ -50,6 +51,10 @@ use App\State\BankAccountStateProvider;
             provider: BankAccountItemProvider::class,
             processor: BankAccountDeleteProcessor::class,
         ),
+        new GetCollection(
+            uriTemplate: '/bank-accounts/{id}/transfers',
+            provider: TransfersByAccountProvider::class,
+        ),
     ],
 )]
 class BankAccountApiResource
@@ -57,9 +62,15 @@ class BankAccountApiResource
     #[ApiProperty(identifier: true)]
     public string|null $id = null;
 
-    public string $accountName;
+    public string|null $accountName = null;
 
-    public string $accountNumber;
+    public string|null $accountNumber = null;
+
+    public string|null $hash = null;
+
+    public bool $isInternal = false;
+
+    public string $totalBalance = '0.00';
 
     /** @var array<string> */
     public array $linkedLabelIds = [];

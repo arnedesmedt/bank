@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Tests\Factory;
 
 use App\Entity\Label;
-use App\Entity\User;
 use Override;
 use Zenstruck\Foundry\Persistence\PersistentObjectFactory;
 
@@ -22,7 +21,6 @@ final class LabelFactory extends PersistentObjectFactory
     {
         return [
             'name'               => self::faker()->word(),
-            'owner'              => UserFactory::new(),
             'linkedRegexes'      => [],
             'linkedBankAccounts' => [],
         ];
@@ -32,10 +30,5 @@ final class LabelFactory extends PersistentObjectFactory
     protected function initialize(): static
     {
         return $this;
-    }
-
-    public function withOwner(User $user): self
-    {
-        return $this->with(['owner' => $user]);
     }
 }

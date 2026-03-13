@@ -10,7 +10,6 @@ use App\ApiResource\TransferApiResource;
 use App\Entity\BankAccount;
 use App\Entity\Label;
 use App\Entity\Transfer;
-use App\Entity\User;
 use App\Repository\LabelRepository;
 use LogicException;
 use Symfony\Component\Uid\Uuid;
@@ -73,6 +72,9 @@ class EntityMapper
         $bankAccountApiResource->id            = $uuid->toRfc4122();
         $bankAccountApiResource->accountName   = $bankAccount->getAccountName();
         $bankAccountApiResource->accountNumber = $bankAccount->getAccountNumber();
+        $bankAccountApiResource->hash          = $bankAccount->getHash();
+        $bankAccountApiResource->isInternal    = $bankAccount->isInternal();
+        $bankAccountApiResource->totalBalance  = $bankAccount->getTotalBalance();
 
         foreach ($bankAccount->getLinkedLabels() as $linkedLabel) {
             $labelUuid = $linkedLabel->getId();
@@ -132,7 +134,7 @@ class EntityMapper
         return $labelApiResource;
     }
 
-    public function mapDtoToLabel(LabelApiResource $labelApiResource, Label $label, User|null $user = null): Label
+    public function mapDtoToLabel(LabelApiResource $labelApiResource, Label $label): Label
     {
         $label->setName($labelApiResource->name);
         $label->setLinkedRegexes($labelApiResource->linkedRegexes);
@@ -148,9 +150,7 @@ class EntityMapper
         }
 
         // Sync linked bank accounts
-        if ($user instanceof User) {
-            $this->labelService->syncLinkedBankAccounts($label, $labelApiResource->linkedBankAccountIds, $user);
-        }
+        $this->labelService->syncLinkedBankAccounts($label, $labelApiResource->linkedBankAccountIds);
 
         return $label;
     }

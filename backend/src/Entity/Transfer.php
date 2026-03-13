@@ -6,6 +6,8 @@ namespace App\Entity;
 
 use App\Repository\TransferRepository;
 use DateTimeImmutable;
+
+use function bcsub;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
@@ -60,9 +62,6 @@ class Transfer
     #[ORM\Column(type: 'boolean')]
     private bool $isInternal = false;
 
-    #[ORM\ManyToOne(targetEntity: User::class)]
-    #[ORM\JoinColumn(referencedColumnName: 'uuid', nullable: false)]
-    private User $user;
 
     public function __construct()
     {
@@ -204,15 +203,26 @@ class Transfer
         return $this;
     }
 
-    public function getOwner(): User
+    /**
+     * T019: Returns the signed balance impact of this transfer for a given bank account.
+     * - If account is the fromAccount (sender): returns the amount as-is (add to balance)
+     * - If account is the toAccount (receiver): returns the negated amount (subtract from balance)
+     * Returns null if the account is not involved in this transfer.
+     */
+    public function getBalanceImpactFor(BankAccount $account): string|null
     {
-        return $this->user;
-    }
+        $fromId = $this->fromAccount->getId();
+        $toId   = $this->toAccount->getId();
+        $accId  = $account->getId();
 
-    public function setOwner(User $user): self
-    {
-        $this->user = $user;
+        if ($fromId !== null && $accId !== null && (string) $fromId === (string) $accId) {
+            return $this->amount;
+        }
 
-        return $this;
+        if ($toId !== null && $accId !== null && (string) $toId === (string) $accId) {
+            return bcsub('0', $this->amount, 2);
+        }
+
+        return null;
     }
 }

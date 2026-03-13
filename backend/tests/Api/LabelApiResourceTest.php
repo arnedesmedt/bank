@@ -22,13 +22,15 @@ class LabelApiResourceTest extends BankApiTestCase
         $this->assertResponseStatusCodeSame(401);
     }
 
-    public function testGetCollectionReturnsOwnedLabels(): void
+    public function testGetCollectionReturnsAllLabels(): void
     {
-        $adminUser = UserFactory::find(['email' => UserFactory::ADMIN_EMAIL]);
-        LabelFactory::createMany(3, ['owner' => $adminUser]);
+        // Owner removed: all labels are visible to any authenticated user
+        LabelFactory::createMany(3);
 
         $otherUser = UserFactory::new()->withCredentials('other@example.com', 'pass')->create();
-        LabelFactory::createMany(2, ['owner' => $otherUser]);
+        unset($otherUser); // no ownership; labels created without owner
+
+        LabelFactory::createMany(2);
 
         $token  = $this->getToken();
         $client = static::createClient();
@@ -45,16 +47,12 @@ class LabelApiResourceTest extends BankApiTestCase
         assert($response instanceof Response);
         $data = json_decode($response->getContent(), true);
         assert(is_array($data));
-        $this->assertCount(3, $data);
+        $this->assertCount(5, $data);
     }
 
     public function testGetSingleLabel(): void
     {
-        $adminUser = UserFactory::find(['email' => UserFactory::ADMIN_EMAIL]);
-        $label     = LabelFactory::createOne([
-            'owner' => $adminUser,
-            'name'  => 'Grocery',
-        ]);
+        $label = LabelFactory::createOne(['name' => 'Grocery']);
 
         $uuid = $label->getId();
         assert($uuid !== null);
@@ -106,11 +104,7 @@ class LabelApiResourceTest extends BankApiTestCase
 
     public function testCreateLabelWithParent(): void
     {
-        $adminUser   = UserFactory::find(['email' => UserFactory::ADMIN_EMAIL]);
-        $parentLabel = LabelFactory::createOne([
-            'owner' => $adminUser,
-            'name'  => 'Food',
-        ]);
+        $parentLabel = LabelFactory::createOne(['name' => 'Food']);
 
         $parentUuid = $parentLabel->getId();
         assert($parentUuid !== null);
@@ -143,11 +137,7 @@ class LabelApiResourceTest extends BankApiTestCase
 
     public function testUpdateLabel(): void
     {
-        $adminUser = UserFactory::find(['email' => UserFactory::ADMIN_EMAIL]);
-        $label     = LabelFactory::createOne([
-            'owner' => $adminUser,
-            'name'  => 'OldName',
-        ]);
+        $label = LabelFactory::createOne(['name' => 'OldName']);
 
         $uuid = $label->getId();
         assert($uuid !== null);
@@ -176,9 +166,8 @@ class LabelApiResourceTest extends BankApiTestCase
 
     public function testDeleteLabel(): void
     {
-        $adminUser = UserFactory::find(['email' => UserFactory::ADMIN_EMAIL]);
-        $label     = LabelFactory::createOne(['owner' => $adminUser]);
-        $uuid      = $label->getId();
+        $label = LabelFactory::createOne();
+        $uuid  = $label->getId();
         assert($uuid !== null);
         $token = $this->getToken();
 
@@ -193,11 +182,11 @@ class LabelApiResourceTest extends BankApiTestCase
         $this->assertResponseStatusCodeSame(204);
     }
 
-    public function testCannotAccessOtherUsersLabel(): void
+    public function testAnyAuthenticatedUserCanAccessAnyLabel(): void
     {
-        $otherUser = UserFactory::new()->withCredentials('other@example.com', 'pass')->create();
-        $label     = LabelFactory::createOne(['owner' => $otherUser]);
-        $uuid      = $label->getId();
+        // Owner removed: labels are accessible by any authenticated user
+        $label = LabelFactory::createOne(['name' => 'SharedLabel']);
+        $uuid  = $label->getId();
         assert($uuid !== null);
         $token = $this->getToken(); // Admin token
 
@@ -209,6 +198,7 @@ class LabelApiResourceTest extends BankApiTestCase
             ],
         ]);
 
-        $this->assertResponseStatusCodeSame(403);
+        // Without owner restriction, any authenticated user can access any label
+        $this->assertResponseIsSuccessful();
     }
 }

@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Repository;
 
 use App\Entity\Label;
-use App\Entity\User;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
@@ -18,19 +17,18 @@ class LabelRepository extends ServiceEntityRepository
     }
 
     /** @return array<Label> */
-    public function findByOwner(User $user): array
+    public function findAll(): array
     {
-        return $this->findBy(['user' => $user]);
+        return $this->findBy([], ['name' => 'ASC']);
     }
 
     /** @return array<Label> */
-    public function findParentLabels(User $user): array
+    public function findParentLabels(): array
     {
         /** @var array<Label> $result */
         $result = $this->createQueryBuilder('l')
-            ->where('l.user = :user')
             ->andWhere('l.parentLabel IS NULL')
-            ->setParameter('user', $user)
+            ->orderBy('l.name', 'ASC')
             ->getQuery()
             ->getResult();
 

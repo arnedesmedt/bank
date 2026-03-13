@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Repository;
 
+use App\Entity\BankAccount;
 use App\Entity\Transfer;
-use App\Entity\User;
 use DateTimeImmutable;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
@@ -29,12 +29,12 @@ class TransferRepository extends ServiceEntityRepository
     }
 
     /** @return array<Transfer> */
-    public function findByOwner(User $user, int $limit = 100, int $offset = 0): array
+    public function findByAccount(BankAccount $account, int $limit = 100, int $offset = 0): array
     {
         /** @var array<Transfer> $result */
         $result = $this->createQueryBuilder('t')
-            ->where('t.user = :user')
-            ->setParameter('user', $user)
+            ->andWhere('t.fromAccount = :account OR t.toAccount = :account')
+            ->setParameter('account', $account)
             ->orderBy('t.date', 'DESC')
             ->setMaxResults($limit)
             ->setFirstResult($offset)
@@ -45,13 +45,25 @@ class TransferRepository extends ServiceEntityRepository
     }
 
     /** @return array<Transfer> */
-    public function findNonInternalByOwner(User $user, int $limit = 100, int $offset = 0): array
+    public function findAll(int $limit = 100, int $offset = 0): array
     {
         /** @var array<Transfer> $result */
         $result = $this->createQueryBuilder('t')
-            ->where('t.user = :user')
+            ->orderBy('t.date', 'DESC')
+            ->setMaxResults($limit)
+            ->setFirstResult($offset)
+            ->getQuery()
+            ->getResult();
+
+        return $result;
+    }
+
+    /** @return array<Transfer> */
+    public function findNonInternal(int $limit = 100, int $offset = 0): array
+    {
+        /** @var array<Transfer> $result */
+        $result = $this->createQueryBuilder('t')
             ->andWhere('t.isInternal = :isInternal')
-            ->setParameter('user', $user)
             ->setParameter('isInternal', false)
             ->orderBy('t.date', 'DESC')
             ->setMaxResults($limit)
@@ -63,19 +75,46 @@ class TransferRepository extends ServiceEntityRepository
     }
 
     /** @return array<Transfer> */
-    public function findByDateRange(User $user, DateTimeImmutable $startDate, DateTimeImmutable $endDate): array
+    public function findByDateRange(DateTimeImmutable $startDate, DateTimeImmutable $endDate): array
     {
         /** @var array<Transfer> $result */
         $result = $this->createQueryBuilder('t')
-            ->where('t.user = :user')
             ->andWhere('t.date >= :startDate')
             ->andWhere('t.date <= :endDate')
-            ->setParameter('user', $user)
             ->setParameter('startDate', $startDate)
             ->setParameter('endDate', $endDate)
             ->orderBy('t.date', 'DESC')
             ->getQuery()
             ->getResult();
+
+        return $result;
+    }
+
+    /**
+     * Find the reverse of an internal transfer.
+     * A "reversed" transfer has the accounts switched and the same amount, on the same date.
+     * (In the Belfius dual-export scenario: A→B,-50 is the reverse of B→A,-50 on the same date.)
+     */
+    public function findReversedInternalTransfer(
+        BankAccount $fromAccount,
+        BankAccount $toAccount,
+        string $amount,
+        DateTimeImmutable $date,
+    ): Transfer|null {
+        // Reversed: from and to are swapped, amount is the same
+        /** @var Transfer|null $result */
+        $result = $this->createQueryBuilder('t')
+            ->andWhere('t.fromAccount = :from')
+            ->andWhere('t.toAccount = :to')
+            ->andWhere('t.amount = :amount')
+            ->andWhere('t.date = :date')
+            ->setParameter('from', $toAccount)
+            ->setParameter('to', $fromAccount)
+            ->setParameter('amount', $amount)
+            ->setParameter('date', $date)
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult();
 
         return $result;
     }

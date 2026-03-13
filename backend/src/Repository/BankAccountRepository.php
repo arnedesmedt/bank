@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Repository;
 
 use App\Entity\BankAccount;
-use App\Entity\User;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
@@ -17,15 +16,15 @@ class BankAccountRepository extends ServiceEntityRepository
         parent::__construct($registry, BankAccount::class);
     }
 
-    public function findByAccountNumber(string $accountNumber): BankAccount|null
+    public function findByHash(string $hash): BankAccount|null
     {
-        return $this->findOneBy(['accountNumber' => $accountNumber]);
+        return $this->findOneBy(['hash' => $hash]);
     }
 
     /** @return array<BankAccount> */
-    public function findByOwner(User $user): array
+    public function findAll(): array
     {
-        return $this->findBy(['user' => $user]);
+        return $this->findBy([], ['accountName' => 'ASC']);
     }
 
     public function save(BankAccount $bankAccount, bool $flush = false): void

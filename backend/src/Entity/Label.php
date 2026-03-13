@@ -56,9 +56,6 @@ class Label
     #[ORM\ManyToMany(targetEntity: Transfer::class, mappedBy: 'labels')]
     private Collection $transfers;
 
-    #[ORM\ManyToOne(targetEntity: User::class)]
-    #[ORM\JoinColumn(referencedColumnName: 'uuid', nullable: false)]
-    private User $user;
 
     public function __construct()
     {
@@ -187,17 +184,5 @@ class Label
     public function getTransfers(): Collection
     {
         return $this->transfers;
-    }
-
-    public function getOwner(): User
-    {
-        return $this->user;
-    }
-
-    public function setOwner(User $user): self
-    {
-        $this->user = $user;
-
-        return $this;
     }
 }

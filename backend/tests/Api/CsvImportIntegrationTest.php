@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Tests\Api;
 
 use ApiPlatform\Symfony\Bundle\Test\Response;
+use App\Entity\BankAccount;
 use App\Tests\Factory\BankAccountFactory;
-use App\Tests\Factory\UserFactory;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 
 use function assert;
@@ -26,12 +26,12 @@ class CsvImportIntegrationTest extends BankApiTestCase
 {
     public function testImportAutoLabelsTransfersByBankAccount(): void
     {
-        $adminUser = UserFactory::find(['email' => UserFactory::ADMIN_EMAIL]);
-
+        $normalizedNumber = BankAccount::normalizeAccountNumber('BE68539007547034');
         BankAccountFactory::createOne([
-            'owner'         => $adminUser,
-            'accountNumber' => 'BE68539007547034',
+            'accountNumber' => $normalizedNumber,
             'accountName'   => 'My Account',
+            'hash'          => BankAccount::calculateHash('My Account', $normalizedNumber),
+            'isInternal'    => true,
         ]);
 
         $token  = $this->getToken();
@@ -120,7 +120,7 @@ class CsvImportIntegrationTest extends BankApiTestCase
                     ? $transfer['toAccountNumber']
                     : 'N/A';
 
-                if (isset($transfer['toAccountNumber']) && $transfer['toAccountNumber'] === 'BE76096123456789') {
+                if (isset($transfer['toAccountNumber']) && $transfer['toAccountNumber'] === 'BE76 0961 2345 6789') {
                     assert(is_array($transfer['labelIds']));
                     $this->assertNotEmpty(
                         $transfer['labelIds'],

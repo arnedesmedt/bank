@@ -13,6 +13,7 @@ RUN apk add --no-cache \
 
 # Install PHP extensions
 RUN docker-php-ext-install \
+    bcmath \
     pdo \
     pdo_pgsql \
     zip

@@ -4,14 +4,21 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\Entity\BankAccount;
 use App\Entity\Transfer;
+use App\Repository\BankAccountRepository;
 use App\Repository\TransferRepository;
+use DateTimeImmutable;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
+
+use function bcadd;
+use function bcsub;
 
 class TransferService
 {
     public function __construct(
         private readonly TransferRepository $transferRepository,
+        private readonly BankAccountRepository $bankAccountRepository,
     ) {
     }
 
@@ -43,5 +50,73 @@ class TransferService
             // Race condition: another process saved the same transfer
             return false;
         }
+    }
+
+    /**
+     * Check if a reversed internal transfer already exists.
+     * Used to filter out duplicate mirrored internal transfers.
+     */
+    public function hasReversedInternalTransfer(
+        BankAccount $fromAccount,
+        BankAccount $toAccount,
+        string $amount,
+        DateTimeImmutable $date,
+    ): bool {
+        return $this->transferRepository->findReversedInternalTransfer(
+            $fromAccount,
+            $toAccount,
+            $amount,
+            $date,
+        ) instanceof Transfer;
+    }
+
+    /**
+     * T018: Find and delete the reversed internal transfer, reversing its balance impact.
+     *
+     * When a new internal transfer matches a previously saved reversed internal transfer
+     * (same amount negated, same date, accounts switched), we must:
+     * 1. Undo the balance updates that were applied when the reversed transfer was saved.
+     * 2. Delete the reversed transfer from the database.
+     *
+     * This ensures "neither transfer is persisted" per the spec.
+     * Returns true if a reversed transfer was found and deleted, false otherwise.
+     */
+    public function deleteReversedInternalTransfer(
+        BankAccount $fromAccount,
+        BankAccount $toAccount,
+        string $amount,
+        DateTimeImmutable $date,
+    ): bool {
+        $reversed = $this->transferRepository->findReversedInternalTransfer(
+            $fromAccount,
+            $toAccount,
+            $amount,
+            $date,
+        );
+
+        if (! $reversed instanceof Transfer) {
+            return false;
+        }
+
+        // Undo balance updates for the reversed transfer.
+        // When the reversed transfer was saved:
+        //   reversedFrom (= toAccount) got += reversedAmount (= amount negated)
+        //   reversedTo   (= fromAccount) got -= reversedAmount
+        // To undo: apply the OPPOSITE of those deltas.
+        $reversedFromAccount = $reversed->getFromAccount();
+        $reversedToAccount   = $reversed->getToAccount();
+        $reversedAmount      = $reversed->getAmount();
+
+        // Undo fromAccount balance: subtract what was added
+        $reversedFromAccount->adjustBalance(bcsub('0', $reversedAmount, 2));
+        $this->bankAccountRepository->save($reversedFromAccount, true);
+
+        // Undo toAccount balance: add back what was subtracted
+        $reversedToAccount->adjustBalance($reversedAmount);
+        $this->bankAccountRepository->save($reversedToAccount, true);
+
+        $this->transferRepository->remove($reversed, true);
+
+        return true;
     }
 }

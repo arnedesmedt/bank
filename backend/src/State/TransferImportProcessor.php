@@ -66,7 +66,6 @@ class TransferImportProcessor implements ProcessorInterface
             $result   = $this->csvImportService->importCsv(
                 $file->getPathname(),
                 $bankType,
-                $user,
                 $fileName,
             );
 

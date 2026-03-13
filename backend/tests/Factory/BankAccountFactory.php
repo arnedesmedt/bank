@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Tests\Factory;
 
 use App\Entity\BankAccount;
-use App\Entity\User;
 use Override;
 use Zenstruck\Foundry\Persistence\PersistentObjectFactory;
 
@@ -20,10 +19,14 @@ final class BankAccountFactory extends PersistentObjectFactory
     /** @return array<string, mixed> */
     protected function defaults(): array
     {
+        $name   = self::faker()->name();
+        $digits = self::faker()->numerify('##############');
+        $number = 'BE' . $digits;
+
         return [
-            'accountName'   => self::faker()->name(),
-            'accountNumber' => 'BE' . self::faker()->numerify('##############'),
-            'owner'         => UserFactory::new(),
+            'accountName'   => $name,
+            'accountNumber' => BankAccount::normalizeAccountNumber($number) ?? $number,
+            'hash'          => BankAccount::calculateHash($name, BankAccount::normalizeAccountNumber($number)),
         ];
     }
 
@@ -31,10 +34,5 @@ final class BankAccountFactory extends PersistentObjectFactory
     protected function initialize(): static
     {
         return $this;
-    }
-
-    public function withOwner(User $user): self
-    {
-        return $this->with(['owner' => $user]);
     }
 }

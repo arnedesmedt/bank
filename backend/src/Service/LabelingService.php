@@ -25,10 +25,8 @@ class LabelingService
      */
     public function autoLabel(Transfer $transfer): void
     {
-        $user = $transfer->getOwner();
-
-        // Get all labels for the owner
-        $labels  = $this->labelRepository->findByOwner($user);
+        // Get all labels
+        $labels  = $this->labelRepository->findAll();
         $applied = false;
 
         foreach ($labels as $label) {

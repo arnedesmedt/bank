@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Api;
 
 use ApiPlatform\Symfony\Bundle\Test\Response;
+use App\Entity\BankAccount;
 use App\Tests\Factory\BankAccountFactory;
 use App\Tests\Factory\LabelFactory;
 use App\Tests\Factory\UserFactory;
@@ -25,9 +26,7 @@ class LabelHierarchyTest extends BankApiTestCase
 
     public function testCreateLabelWithParentSetsHierarchy(): void
     {
-        $adminUser   = UserFactory::find(['email' => UserFactory::ADMIN_EMAIL]);
         $parentLabel = LabelFactory::createOne([
-            'owner' => $adminUser,
             'name'  => 'Groceries',
         ]);
 
@@ -62,11 +61,9 @@ class LabelHierarchyTest extends BankApiTestCase
 
     public function testUpdateLabelCanChangeParent(): void
     {
-        $adminUser    = UserFactory::find(['email' => UserFactory::ADMIN_EMAIL]);
-        $label        = LabelFactory::createOne(['owner' => $adminUser, 'name' => 'Food']);
-        $parentLabel2 = LabelFactory::createOne(['owner' => $adminUser, 'name' => 'Household']);
+        $label        = LabelFactory::createOne(['name' => 'Food']);
+        $parentLabel2 = LabelFactory::createOne(['name' => 'Household']);
         $childLabel   = LabelFactory::createOne([
-            'owner'       => $adminUser,
             'name'        => 'Supermarket',
             'parentLabel' => $label,
         ]);
@@ -103,10 +100,8 @@ class LabelHierarchyTest extends BankApiTestCase
 
     public function testUpdateLabelCanRemoveParent(): void
     {
-        $adminUser   = UserFactory::find(['email' => UserFactory::ADMIN_EMAIL]);
-        $parentLabel = LabelFactory::createOne(['owner' => $adminUser, 'name' => 'Food']);
+        $parentLabel = LabelFactory::createOne(['name' => 'Food']);
         $childLabel  = LabelFactory::createOne([
-            'owner'       => $adminUser,
             'name'        => 'Bread',
             'parentLabel' => $parentLabel,
         ]);
@@ -141,10 +136,8 @@ class LabelHierarchyTest extends BankApiTestCase
 
     public function testGetLabelReturnsParentInfo(): void
     {
-        $adminUser   = UserFactory::find(['email' => UserFactory::ADMIN_EMAIL]);
-        $parentLabel = LabelFactory::createOne(['owner' => $adminUser, 'name' => 'Food']);
+        $parentLabel = LabelFactory::createOne(['name' => 'Food']);
         $childLabel  = LabelFactory::createOne([
-            'owner'       => $adminUser,
             'name'        => 'Milk',
             'parentLabel' => $parentLabel,
         ]);
@@ -180,11 +173,10 @@ class LabelHierarchyTest extends BankApiTestCase
 
     public function testCreateLabelWithLinkedBankAccounts(): void
     {
-        $adminUser   = UserFactory::find(['email' => UserFactory::ADMIN_EMAIL]);
         $bankAccount = BankAccountFactory::createOne([
-            'owner'         => $adminUser,
-            'accountNumber' => 'BE68539007547034',
+            'accountNumber' => BankAccount::normalizeAccountNumber('BE68539007547034'),
             'accountName'   => 'My Account',
+            'hash'          => BankAccount::calculateHash('My Account', BankAccount::normalizeAccountNumber('BE68539007547034')),
         ]);
 
         $bankAccountUuid = $bankAccount->getId();
@@ -219,16 +211,15 @@ class LabelHierarchyTest extends BankApiTestCase
 
     public function testUpdateLabelCanAddAndRemoveBankAccounts(): void
     {
-        $adminUser = UserFactory::find(['email' => UserFactory::ADMIN_EMAIL]);
         BankAccountFactory::createOne([
-            'owner'         => $adminUser,
-            'accountNumber' => 'BE68539007547034',
+            'accountNumber' => BankAccount::normalizeAccountNumber('BE68539007547034'),
+            'hash'          => BankAccount::calculateHash(null, BankAccount::normalizeAccountNumber('BE68539007547034')),
         ]);
         $bankAccount2 = BankAccountFactory::createOne([
-            'owner'         => $adminUser,
-            'accountNumber' => 'BE71096400007055',
+            'accountNumber' => BankAccount::normalizeAccountNumber('BE71096400007055'),
+            'hash'          => BankAccount::calculateHash(null, BankAccount::normalizeAccountNumber('BE71096400007055')),
         ]);
-        $label        = LabelFactory::createOne(['owner' => $adminUser, 'name' => 'Bills']);
+        $label        = LabelFactory::createOne(['name' => 'Bills']);
 
         $labelUuid        = $label->getId();
         $bankAccount2Uuid = $bankAccount2->getId();
@@ -263,18 +254,18 @@ class LabelHierarchyTest extends BankApiTestCase
         $this->assertContains($bankAccount2Uuid->toRfc4122(), $linkedBankAccountIds);
     }
 
-    public function testCannotLinkBankAccountOwnedByAnotherUser(): void
+    public function testAnyBankAccountCanBeLinkedAfterOwnerRemoval(): void
     {
-        $otherUser   = UserFactory::new()->withCredentials('other@example.com', 'pass')->create();
+        // Owner removed: bank accounts can now be linked by any authenticated user
         $bankAccount = BankAccountFactory::createOne([
-            'owner'         => $otherUser,
-            'accountNumber' => 'BE68539007547034',
+            'accountNumber' => BankAccount::normalizeAccountNumber('BE68539007547034'),
+            'hash'          => BankAccount::calculateHash(null, BankAccount::normalizeAccountNumber('BE68539007547034')),
         ]);
 
         $bankAccountUuid = $bankAccount->getId();
         assert($bankAccountUuid !== null);
 
-        $token  = $this->getToken(); // Admin token
+        $token  = $this->getToken();
         $client = static::createClient();
 
         $client->request('POST', '/api/labels', [
@@ -290,7 +281,7 @@ class LabelHierarchyTest extends BankApiTestCase
             ],
         ]);
 
-        // Should succeed but NOT link the bank account (security check)
+        // Owner removed: any bank account is linkable by any authenticated user
         $this->assertResponseStatusCodeSame(201);
         $response = $client->getResponse();
         assert($response instanceof Response);
@@ -298,7 +289,8 @@ class LabelHierarchyTest extends BankApiTestCase
         assert(is_array($data));
         $linkedBankAccountIds = $data['linkedBankAccountIds'];
         assert(is_array($linkedBankAccountIds));
-        $this->assertEmpty($linkedBankAccountIds);
+        $this->assertCount(1, $linkedBankAccountIds);
+        $this->assertContains($bankAccountUuid->toRfc4122(), $linkedBankAccountIds);
     }
 
     // phpcs:ignore
@@ -336,9 +328,7 @@ class LabelHierarchyTest extends BankApiTestCase
 
     public function testUpdateLabelRegexes(): void
     {
-        $adminUser = UserFactory::find(['email' => UserFactory::ADMIN_EMAIL]);
         $label     = LabelFactory::createOne([
-            'owner'         => $adminUser,
             'name'          => 'Utilities',
             'linkedRegexes' => ['/ELECTRICITY/i'],
         ]);
@@ -409,10 +399,9 @@ class LabelHierarchyTest extends BankApiTestCase
 
     public function testGetCollectionIncludesLinkedBankAccountIds(): void
     {
-        $adminUser   = UserFactory::find(['email' => UserFactory::ADMIN_EMAIL]);
         $bankAccount = BankAccountFactory::createOne([
-            'owner'         => $adminUser,
-            'accountNumber' => 'BE68539007547034',
+            'accountNumber' => BankAccount::normalizeAccountNumber('BE68539007547034'),
+            'hash'          => BankAccount::calculateHash(null, BankAccount::normalizeAccountNumber('BE68539007547034')),
         ]);
 
         $bankAccountUuid = $bankAccount->getId();

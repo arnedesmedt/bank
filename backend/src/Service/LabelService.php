@@ -7,7 +7,6 @@ namespace App\Service;
 use App\Entity\BankAccount;
 use App\Entity\Label;
 use App\Entity\Transfer;
-use App\Entity\User;
 use App\Repository\BankAccountRepository;
 use App\Repository\LabelRepository;
 use Symfony\Component\Uid\Uuid;
@@ -115,7 +114,7 @@ class LabelService
      *
      * @param array<string> $bankAccountIds
      */
-    public function syncLinkedBankAccounts(Label $label, array $bankAccountIds, User $user): void
+    public function syncLinkedBankAccounts(Label $label, array $bankAccountIds): void
     {
         // Remove existing linked bank accounts not in new list
         foreach ($label->getLinkedBankAccounts() as $linkedBankAccount) {
@@ -139,11 +138,6 @@ class LabelService
                 continue;
             }
 
-            // Security: only link bank accounts owned by the same user
-            if (! $bankAccount->getOwner()->getId()?->equals($user->getId() ?? Uuid::v4())) {
-                continue;
-            }
-
             $label->addLinkedBankAccount($bankAccount);
         }
     }
@@ -163,9 +157,9 @@ class LabelService
      *
      * @return array<Label>
      */
-    public function findMatchingLabelsByBankAccount(Transfer $transfer, User $user): array
+    public function findMatchingLabelsByBankAccount(Transfer $transfer): array
     {
-        $labels  = $this->labelRepository->findByOwner($user);
+        $labels  = $this->labelRepository->findAll();
         $matches = [];
 
         foreach ($labels as $label) {
@@ -188,9 +182,9 @@ class LabelService
      *
      * @return array<Label>
      */
-    public function findMatchingLabelsByRegex(Transfer $transfer, User $user): array
+    public function findMatchingLabelsByRegex(Transfer $transfer): array
     {
-        $labels    = $this->labelRepository->findByOwner($user);
+        $labels    = $this->labelRepository->findAll();
         $matches   = [];
         $reference = $transfer->getReference();
 
