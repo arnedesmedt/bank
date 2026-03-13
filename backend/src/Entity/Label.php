@@ -52,16 +52,20 @@ class Label
     #[ORM\Column(type: 'decimal', precision: 5, scale: 2, nullable: true)]
     private string|null $maxPercentage = null;
 
-    /** @var Collection<int, Transfer> */
-    #[ORM\ManyToMany(targetEntity: Transfer::class, mappedBy: 'labels')]
-    private Collection $transfers;
-
+    /** @var Collection<int, LabelTransferLink> */
+    #[ORM\OneToMany(
+        targetEntity: LabelTransferLink::class,
+        mappedBy: 'label',
+        cascade: ['persist', 'remove'],
+        orphanRemoval: true,
+    )]
+    private Collection $labelTransferLinks;
 
     public function __construct()
     {
         $this->childLabels        = new ArrayCollection();
         $this->linkedBankAccounts = new ArrayCollection();
-        $this->transfers          = new ArrayCollection();
+        $this->labelTransferLinks = new ArrayCollection();
     }
 
     public function getId(): Uuid|null
@@ -180,9 +184,9 @@ class Label
         return $this;
     }
 
-    /** @return Collection<int, Transfer> */
-    public function getTransfers(): Collection
+    /** @return Collection<int, LabelTransferLink> */
+    public function getLabelTransferLinks(): Collection
     {
-        return $this->transfers;
+        return $this->labelTransferLinks;
     }
 }

@@ -10,6 +10,7 @@ use App\ApiResource\LabelApiResource;
 use App\Entity\Label;
 use App\Repository\LabelRepository;
 use App\Service\EntityMapper;
+use App\Service\LabelingService;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Uid\Uuid;
 
@@ -21,6 +22,7 @@ class LabelStateProcessor implements ProcessorInterface
     public function __construct(
         private readonly LabelRepository $labelRepository,
         private readonly EntityMapper $entityMapper,
+        private readonly LabelingService $labelingService,
     ) {
     }
 
@@ -49,6 +51,9 @@ class LabelStateProcessor implements ProcessorInterface
 
         $this->entityMapper->mapDtoToLabel($data, $label);
         $this->labelRepository->save($label, true);
+
+        // FR-008: Auto-assign label to all matching existing transfers after create/update
+        $this->labelingService->autoAssignLabelToAllTransfers($label);
 
         return $this->entityMapper->mapLabelToDto($label);
     }

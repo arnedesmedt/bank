@@ -40,7 +40,6 @@ class LabelItemProvider implements ProviderInterface
             throw new NotFoundHttpException('Label not found');
         }
 
-
         return $this->entityMapper->mapLabelToDto($label);
     }
 }

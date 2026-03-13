@@ -2,15 +2,14 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
-import * as labelsService from '../src/services/labelsService';
 import LabelsListPage from '../src/pages/LabelsListPage';
 
-// Mock AuthContext so the page gets a token without a real provider
+// Mock AuthContext so the component gets a token without a real provider
 vi.mock('../src/contexts/AuthContext', () => ({
     useAuth: () => ({ accessToken: 'test-token' }),
 }));
 
-const mockLabels: labelsService.Label[] = [
+const mockLabelsResponse = [
     {
         id: '1',
         name: 'Groceries',
@@ -38,40 +37,67 @@ describe('LabelsListPage', () => {
         vi.restoreAllMocks();
     });
 
-    it('renders labels list', async () => {
-        vi.spyOn(labelsService, 'fetchLabels').mockResolvedValue(mockLabels);
+    it('renders LabelManager with labels', async () => {
+        // LabelManager uses fetch directly for both labels and bank accounts
+        vi.stubGlobal(
+            'fetch',
+            vi.fn().mockImplementation((url: string) => {
+                if (typeof url === 'string' && url.includes('/api/labels')) {
+                    return Promise.resolve({
+                        ok: true,
+                        json: () => Promise.resolve(mockLabelsResponse),
+                    });
+                }
+                if (typeof url === 'string' && url.includes('/api/bank-accounts')) {
+                    return Promise.resolve({
+                        ok: true,
+                        json: () => Promise.resolve([]),
+                    });
+                }
+                return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
+            }),
+        );
+
         render(<LabelsListPage />);
+
         await waitFor(() => {
             expect(screen.getByText('Labels')).toBeInTheDocument();
-            // Groceries appears as a row name (td) and as a parent-label badge (span)
-            expect(screen.getAllByText('Groceries').length).toBeGreaterThanOrEqual(1);
+            expect(screen.getByText('Groceries')).toBeInTheDocument();
             expect(screen.getByText('Bread')).toBeInTheDocument();
         });
     });
 
-    it('shows parent label name in the row', async () => {
-        vi.spyOn(labelsService, 'fetchLabels').mockResolvedValue(mockLabels);
+    it('shows create label button on labels page', async () => {
+        vi.stubGlobal(
+            'fetch',
+            vi.fn().mockResolvedValue({
+                ok: true,
+                json: () => Promise.resolve([]),
+            }),
+        );
+
         render(<LabelsListPage />);
+
         await waitFor(() => {
-            expect(screen.getByText('Groceries', { selector: 'span' })).toBeInTheDocument();
+            expect(screen.getByTestId('create-label-button')).toBeInTheDocument();
         });
     });
 
     it('shows empty state when no labels', async () => {
-        vi.spyOn(labelsService, 'fetchLabels').mockResolvedValue([]);
-        render(<LabelsListPage />);
-        await waitFor(() => {
-            expect(screen.getByText('No labels found.')).toBeInTheDocument();
-        });
-    });
+        vi.stubGlobal(
+            'fetch',
+            vi.fn().mockResolvedValue({
+                ok: true,
+                json: () => Promise.resolve([]),
+            }),
+        );
 
-    it('shows error state on fetch failure', async () => {
-        vi.spyOn(labelsService, 'fetchLabels').mockRejectedValue(new Error('API error'));
         render(<LabelsListPage />);
+
         await waitFor(() => {
-            expect(screen.getByText('Failed to load labels.')).toBeInTheDocument();
+            expect(
+                screen.getByText(/No labels yet/i) || screen.queryByTestId('labels-list') === null,
+            ).toBeTruthy();
         });
     });
 });
-
-

@@ -9,6 +9,9 @@ use App\Entity\Transfer;
 use DateTimeImmutable;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
+use Override;
+
+use function assert;
 
 /** @extends ServiceEntityRepository<Transfer> */
 class TransferRepository extends ServiceEntityRepository
@@ -29,12 +32,12 @@ class TransferRepository extends ServiceEntityRepository
     }
 
     /** @return array<Transfer> */
-    public function findByAccount(BankAccount $account, int $limit = 100, int $offset = 0): array
+    public function findByAccount(BankAccount $bankAccount, int $limit = 100, int $offset = 0): array
     {
         /** @var array<Transfer> $result */
         $result = $this->createQueryBuilder('t')
             ->andWhere('t.fromAccount = :account OR t.toAccount = :account')
-            ->setParameter('account', $account)
+            ->setParameter('account', $bankAccount)
             ->orderBy('t.date', 'DESC')
             ->setMaxResults($limit)
             ->setFirstResult($offset)
@@ -45,6 +48,7 @@ class TransferRepository extends ServiceEntityRepository
     }
 
     /** @return array<Transfer> */
+    #[Override]
     public function findAll(int $limit = 100, int $offset = 0): array
     {
         /** @var array<Transfer> $result */
@@ -101,8 +105,6 @@ class TransferRepository extends ServiceEntityRepository
         string $amount,
         DateTimeImmutable $date,
     ): Transfer|null {
-        // Reversed: from and to are swapped, amount is the same
-        /** @var Transfer|null $result */
         $result = $this->createQueryBuilder('t')
             ->andWhere('t.fromAccount = :from')
             ->andWhere('t.toAccount = :to')
@@ -115,6 +117,7 @@ class TransferRepository extends ServiceEntityRepository
             ->setMaxResults(1)
             ->getQuery()
             ->getOneOrNullResult();
+        assert($result instanceof Transfer || $result === null);
 
         return $result;
     }

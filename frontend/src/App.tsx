@@ -1,11 +1,9 @@
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { LoginForm } from './components/LoginForm';
-import { TransferImport } from './components/TransferImport';
 import { TransferList } from './components/TransferList';
-import { LabelManager } from './components/LabelManager';
 import BankAccountsListPage from './pages/BankAccountsListPage';
 import LabelsListPage from './pages/LabelsListPage';
-import React, { useState } from 'react';
+import { useState } from 'react';
 
 type Page = 'transfers' | 'bank-accounts' | 'labels';
 
@@ -73,13 +71,7 @@ function AppContent() {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {currentPage === 'transfers' && (
-          <div className="space-y-6">
-            <LabelManager />
-            <TransferImport />
-            <TransferList />
-          </div>
-        )}
+        {currentPage === 'transfers' && <TransferList />}
         {currentPage === 'bank-accounts' && <BankAccountsListPage />}
         {currentPage === 'labels' && <LabelsListPage />}
       </main>

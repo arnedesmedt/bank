@@ -40,7 +40,6 @@ class BankAccountItemProvider implements ProviderInterface
             throw new NotFoundHttpException('BankAccount not found');
         }
 
-
         return $this->entityMapper->mapBankAccountToDto($bankAccount);
     }
 }

@@ -1,12 +1,17 @@
 <?php
+
 declare(strict_types=1);
+
 namespace App\Tests\Api;
+
 use ApiPlatform\Symfony\Bundle\Test\Response;
 use App\Entity\BankAccount;
 use App\Tests\Factory\BankAccountFactory;
+
 use function assert;
 use function is_array;
 use function json_decode;
+
 /**
  * US1: Tests for account creation, hash uniqueness, normalization, and internal flag.
  *
@@ -14,15 +19,17 @@ use function json_decode;
  */
 class BankAccountApiResourceTest extends BankApiTestCase
 {
-    // -------------------------------------------------------------------------
+    // phpcs:ignore
     // Authentication
-    // -------------------------------------------------------------------------
+    // phpcs:ignore
+
     public function testGetCollectionRequiresAuthentication(): void
     {
         $client = static::createClient();
         $client->request('GET', '/api/bank-accounts');
         $this->assertResponseStatusCodeSame(401);
     }
+
     public function testCreateBankAccountRequiresAuthentication(): void
     {
         $client = static::createClient();
@@ -32,9 +39,11 @@ class BankAccountApiResourceTest extends BankApiTestCase
         ]);
         $this->assertResponseStatusCodeSame(401);
     }
-    // -------------------------------------------------------------------------
+
+    // phpcs:ignore
     // GET collection & item
-    // -------------------------------------------------------------------------
+    // phpcs:ignore
+
     public function testGetCollectionReturnsBankAccounts(): void
     {
         BankAccountFactory::createMany(3);
@@ -53,6 +62,7 @@ class BankAccountApiResourceTest extends BankApiTestCase
         assert(is_array($data));
         $this->assertCount(3, $data);
     }
+
     public function testGetCollectionExposesHashInternalAndTotalBalance(): void
     {
         $normalizedNumber = BankAccount::normalizeAccountNumber('BE68539007547034');
@@ -76,21 +86,24 @@ class BankAccountApiResourceTest extends BankApiTestCase
         assert($response instanceof Response);
         $data = json_decode($response->getContent(), true);
         assert(is_array($data));
-        $this->assertArrayHasKey('hash', $data[0]);
-        $this->assertArrayHasKey('isInternal', $data[0]);
-        $this->assertArrayHasKey('totalBalance', $data[0]);
+        $firstItem = $data[0];
+        assert(is_array($firstItem));
+        $this->assertArrayHasKey('hash', $firstItem);
+        $this->assertArrayHasKey('isInternal', $firstItem);
+        $this->assertArrayHasKey('totalBalance', $firstItem);
     }
+
     public function testGetSingleBankAccount(): void
     {
         $normalizedNumber = BankAccount::normalizeAccountNumber('BE68539007547034');
-        $bankAccount = BankAccountFactory::createOne([
+        $bankAccount      = BankAccountFactory::createOne([
             'accountName'   => 'My Savings',
             'accountNumber' => $normalizedNumber,
             'hash'          => BankAccount::calculateHash('My Savings', $normalizedNumber),
         ]);
-        $uuid = $bankAccount->getId();
+        $uuid             = $bankAccount->getId();
         assert($uuid !== null);
-        $token = $this->getToken();
+        $token  = $this->getToken();
         $client = static::createClient();
         $client->request('GET', '/api/bank-accounts/' . $uuid->toRfc4122(), [
             'headers' => [
@@ -108,9 +121,11 @@ class BankAccountApiResourceTest extends BankApiTestCase
         $this->assertArrayHasKey('hash', $data);
         $this->assertNotEmpty($data['hash']);
     }
-    // -------------------------------------------------------------------------
+
+    // phpcs:ignore
     // T009: Hash calculation
-    // -------------------------------------------------------------------------
+    // phpcs:ignore
+
     public function testCreateBankAccountHashIsCalculated(): void
     {
         $token  = $this->getToken();
@@ -137,6 +152,7 @@ class BankAccountApiResourceTest extends BankApiTestCase
         $expectedHash = BankAccount::calculateHash('Hash Test Account', 'BE68 5390 0754 7034');
         $this->assertSame($expectedHash, $data['hash']);
     }
+
     public function testHashIsCalculatedWithNullNameAndNumber(): void
     {
         $token  = $this->getToken();
@@ -162,13 +178,15 @@ class BankAccountApiResourceTest extends BankApiTestCase
         $expectedHash = BankAccount::calculateHash(null, null);
         $this->assertSame($expectedHash, $data['hash']);
     }
-    // -------------------------------------------------------------------------
+
+    // phpcs:ignore
     // T014: Duplicate hash rejection
-    // -------------------------------------------------------------------------
+    // phpcs:ignore
+
     public function testCreateDuplicateAccountIsRejected(): void
     {
-        $token  = $this->getToken();
-        $client = static::createClient();
+        $token   = $this->getToken();
+        $client  = static::createClient();
         $payload = [
             'accountName'   => 'Duplicate Account',
             'accountNumber' => 'BE68539007547034',
@@ -194,6 +212,7 @@ class BankAccountApiResourceTest extends BankApiTestCase
         ]);
         $this->assertResponseStatusCodeSame(409);
     }
+
     public function testCreateDuplicateWithSpacesInNumberIsRejected(): void
     {
         $token  = $this->getToken();
@@ -219,9 +238,11 @@ class BankAccountApiResourceTest extends BankApiTestCase
         ]);
         $this->assertResponseStatusCodeSame(409);
     }
-    // -------------------------------------------------------------------------
+
+    // phpcs:ignore
     // T011: Account number normalization
-    // -------------------------------------------------------------------------
+    // phpcs:ignore
+
     public function testAccountNumberIsNormalizedOnCreate(): void
     {
         $token  = $this->getToken();
@@ -244,6 +265,7 @@ class BankAccountApiResourceTest extends BankApiTestCase
         assert(is_array($data));
         $this->assertSame('BE68 5390 0754 7034', $data['accountNumber']);
     }
+
     public function testAlreadyFormattedAccountNumberIsPreserved(): void
     {
         $token  = $this->getToken();
@@ -266,6 +288,7 @@ class BankAccountApiResourceTest extends BankApiTestCase
         assert(is_array($data));
         $this->assertSame('BE68 5390 0754 7034', $data['accountNumber']);
     }
+
     public function testInvalidAccountNumberIsStoredAsNull(): void
     {
         $token  = $this->getToken();
@@ -289,9 +312,11 @@ class BankAccountApiResourceTest extends BankApiTestCase
         // accountNumber is null or absent when cannot normalize
         $this->assertNull($data['accountNumber'] ?? null);
     }
-    // -------------------------------------------------------------------------
+
+    // phpcs:ignore
     // T010: Strict property handling (nulls)
-    // -------------------------------------------------------------------------
+    // phpcs:ignore
+
     public function testEmptyAccountNameIsStoredAsNull(): void
     {
         $token  = $this->getToken();
@@ -315,9 +340,11 @@ class BankAccountApiResourceTest extends BankApiTestCase
         // accountName is null or absent when empty/whitespace
         $this->assertNull($data['accountName'] ?? null);
     }
-    // -------------------------------------------------------------------------
+
+    // phpcs:ignore
     // T012: Internal flag for first account
-    // -------------------------------------------------------------------------
+    // phpcs:ignore
+
     public function testFirstCreatedAccountIsInternal(): void
     {
         $token  = $this->getToken();
@@ -340,6 +367,7 @@ class BankAccountApiResourceTest extends BankApiTestCase
         assert(is_array($data));
         $this->assertTrue($data['isInternal'], 'First account should be marked as internal');
     }
+
     public function testSecondCreatedAccountIsNotInternal(): void
     {
         $token  = $this->getToken();
@@ -376,12 +404,13 @@ class BankAccountApiResourceTest extends BankApiTestCase
         assert(is_array($data));
         $this->assertFalse($data['isInternal'], 'Second account should not be marked as internal');
     }
+
     public function testFactoryCreatedAccountExposesIsInternalField(): void
     {
         $bankAccount = BankAccountFactory::createOne();
         $uuid        = $bankAccount->getId();
         assert($uuid !== null);
-        $token = $this->getToken();
+        $token  = $this->getToken();
         $client = static::createClient();
         $client->request('GET', '/api/bank-accounts/' . $uuid->toRfc4122(), [
             'headers' => [
@@ -398,9 +427,11 @@ class BankAccountApiResourceTest extends BankApiTestCase
         $this->assertArrayHasKey('totalBalance', $data);
         $this->assertArrayHasKey('hash', $data);
     }
-    // -------------------------------------------------------------------------
+
+    // phpcs:ignore
     // CRUD
-    // -------------------------------------------------------------------------
+    // phpcs:ignore
+
     public function testCreateBankAccount(): void
     {
         $token  = $this->getToken();
@@ -426,17 +457,18 @@ class BankAccountApiResourceTest extends BankApiTestCase
         // Number should be normalized
         $this->assertSame('BE71 0961 2345 6769', $data['accountNumber']);
     }
+
     public function testUpdateBankAccount(): void
     {
         $normalizedNumber = BankAccount::normalizeAccountNumber('BE68539007547034');
-        $bankAccount = BankAccountFactory::createOne([
+        $bankAccount      = BankAccountFactory::createOne([
             'accountName'   => 'Old Name',
             'accountNumber' => $normalizedNumber,
             'hash'          => BankAccount::calculateHash('Old Name', $normalizedNumber),
         ]);
-        $uuid = $bankAccount->getId();
+        $uuid             = $bankAccount->getId();
         assert($uuid !== null);
-        $token = $this->getToken();
+        $token  = $this->getToken();
         $client = static::createClient();
         $client->request('PUT', '/api/bank-accounts/' . $uuid->toRfc4122(), [
             'headers' => [
@@ -458,12 +490,13 @@ class BankAccountApiResourceTest extends BankApiTestCase
         // Hash should NOT change on update (set only on creation/import)
         $this->assertSame(BankAccount::calculateHash('Old Name', $normalizedNumber), $data['hash']);
     }
+
     public function testDeleteBankAccount(): void
     {
         $bankAccount = BankAccountFactory::createOne();
         $uuid        = $bankAccount->getId();
         assert($uuid !== null);
-        $token = $this->getToken();
+        $token  = $this->getToken();
         $client = static::createClient();
         $client->request('DELETE', '/api/bank-accounts/' . $uuid->toRfc4122(), [
             'headers' => [

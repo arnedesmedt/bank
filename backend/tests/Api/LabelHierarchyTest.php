@@ -8,7 +8,6 @@ use ApiPlatform\Symfony\Bundle\Test\Response;
 use App\Entity\BankAccount;
 use App\Tests\Factory\BankAccountFactory;
 use App\Tests\Factory\LabelFactory;
-use App\Tests\Factory\UserFactory;
 
 use function assert;
 use function is_array;
@@ -26,9 +25,7 @@ class LabelHierarchyTest extends BankApiTestCase
 
     public function testCreateLabelWithParentSetsHierarchy(): void
     {
-        $parentLabel = LabelFactory::createOne([
-            'name'  => 'Groceries',
-        ]);
+        $parentLabel = LabelFactory::createOne(['name' => 'Groceries']);
 
         $parentUuid = $parentLabel->getId();
         assert($parentUuid !== null);
@@ -176,7 +173,10 @@ class LabelHierarchyTest extends BankApiTestCase
         $bankAccount = BankAccountFactory::createOne([
             'accountNumber' => BankAccount::normalizeAccountNumber('BE68539007547034'),
             'accountName'   => 'My Account',
-            'hash'          => BankAccount::calculateHash('My Account', BankAccount::normalizeAccountNumber('BE68539007547034')),
+            'hash'          => BankAccount::calculateHash(
+                'My Account',
+                BankAccount::normalizeAccountNumber('BE68539007547034'),
+            ),
         ]);
 
         $bankAccountUuid = $bankAccount->getId();
@@ -213,11 +213,17 @@ class LabelHierarchyTest extends BankApiTestCase
     {
         BankAccountFactory::createOne([
             'accountNumber' => BankAccount::normalizeAccountNumber('BE68539007547034'),
-            'hash'          => BankAccount::calculateHash(null, BankAccount::normalizeAccountNumber('BE68539007547034')),
+            'hash'          => BankAccount::calculateHash(
+                null,
+                BankAccount::normalizeAccountNumber('BE68539007547034'),
+            ),
         ]);
         $bankAccount2 = BankAccountFactory::createOne([
             'accountNumber' => BankAccount::normalizeAccountNumber('BE71096400007055'),
-            'hash'          => BankAccount::calculateHash(null, BankAccount::normalizeAccountNumber('BE71096400007055')),
+            'hash'          => BankAccount::calculateHash(
+                null,
+                BankAccount::normalizeAccountNumber('BE71096400007055'),
+            ),
         ]);
         $label        = LabelFactory::createOne(['name' => 'Bills']);
 
@@ -259,7 +265,10 @@ class LabelHierarchyTest extends BankApiTestCase
         // Owner removed: bank accounts can now be linked by any authenticated user
         $bankAccount = BankAccountFactory::createOne([
             'accountNumber' => BankAccount::normalizeAccountNumber('BE68539007547034'),
-            'hash'          => BankAccount::calculateHash(null, BankAccount::normalizeAccountNumber('BE68539007547034')),
+            'hash'          => BankAccount::calculateHash(
+                null,
+                BankAccount::normalizeAccountNumber('BE68539007547034'),
+            ),
         ]);
 
         $bankAccountUuid = $bankAccount->getId();
@@ -328,7 +337,7 @@ class LabelHierarchyTest extends BankApiTestCase
 
     public function testUpdateLabelRegexes(): void
     {
-        $label     = LabelFactory::createOne([
+        $label = LabelFactory::createOne([
             'name'          => 'Utilities',
             'linkedRegexes' => ['/ELECTRICITY/i'],
         ]);
@@ -401,7 +410,10 @@ class LabelHierarchyTest extends BankApiTestCase
     {
         $bankAccount = BankAccountFactory::createOne([
             'accountNumber' => BankAccount::normalizeAccountNumber('BE68539007547034'),
-            'hash'          => BankAccount::calculateHash(null, BankAccount::normalizeAccountNumber('BE68539007547034')),
+            'hash'          => BankAccount::calculateHash(
+                null,
+                BankAccount::normalizeAccountNumber('BE68539007547034'),
+            ),
         ]);
 
         $bankAccountUuid = $bankAccount->getId();

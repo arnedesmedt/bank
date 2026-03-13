@@ -6,12 +6,14 @@ namespace App\Entity;
 
 use App\Repository\TransferRepository;
 use DateTimeImmutable;
-
-use function bcsub;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Uid\Uuid;
+
+use function array_map;
+use function array_values;
+use function bcsub;
 
 #[ORM\Entity(repositoryClass: TransferRepository::class)]
 #[ORM\Table(name: 'transfers')]
@@ -26,6 +28,7 @@ class Transfer
     #[ORM\CustomIdGenerator(class: 'doctrine.uuid_generator')]
     private Uuid|null $uuid = null; // @phpstan-ignore property.unusedType (Doctrine assigns the Uuid value)
 
+    /** @var numeric-string */
     #[ORM\Column(type: 'decimal', precision: 10, scale: 2)]
     private string $amount;
 
@@ -40,12 +43,14 @@ class Transfer
     #[ORM\JoinColumn(referencedColumnName: 'uuid', nullable: false)]
     private BankAccount $toAccount;
 
-    /** @var Collection<int, Label> */
-    #[ORM\ManyToMany(targetEntity: Label::class, inversedBy: 'transfers')]
-    #[ORM\JoinTable(name: 'transfer_label')]
-    #[ORM\JoinColumn(name: 'transfer_uuid', referencedColumnName: 'uuid')]
-    #[ORM\InverseJoinColumn(name: 'label_uuid', referencedColumnName: 'uuid')]
-    private Collection $labels;
+    /** @var Collection<int, LabelTransferLink> */
+    #[ORM\OneToMany(
+        targetEntity: LabelTransferLink::class,
+        mappedBy: 'transfer',
+        cascade: ['persist', 'remove'],
+        orphanRemoval: true,
+    )]
+    private Collection $labelTransferLinks;
 
     #[ORM\Column(type: 'text')]
     private string $reference;
@@ -62,10 +67,9 @@ class Transfer
     #[ORM\Column(type: 'boolean')]
     private bool $isInternal = false;
 
-
     public function __construct()
     {
-        $this->labels = new ArrayCollection();
+        $this->labelTransferLinks = new ArrayCollection();
     }
 
     public function getId(): Uuid|null
@@ -73,11 +77,13 @@ class Transfer
         return $this->uuid;
     }
 
+    /** @return numeric-string */
     public function getAmount(): string
     {
         return $this->amount;
     }
 
+    /** @param numeric-string $amount */
     public function setAmount(string $amount): self
     {
         $this->amount = $amount;
@@ -121,24 +127,60 @@ class Transfer
         return $this;
     }
 
-    /** @return Collection<int, Label> */
-    public function getLabels(): Collection
+    /** @return Collection<int, LabelTransferLink> */
+    public function getLabelTransferLinks(): Collection
     {
-        return $this->labels;
+        return $this->labelTransferLinks;
     }
 
-    public function addLabel(Label $label): self
+    /**
+     * Returns all labels linked to this transfer (via LabelTransferLink).
+     * Helper for backward-compatible access.
+     *
+     * @return array<Label>
+     */
+    public function getLabels(): array
     {
-        if (! $this->labels->contains($label)) {
-            $this->labels->add($label);
+        return array_values(array_map(
+            static fn (LabelTransferLink $labelTransferLink): Label => $labelTransferLink->getLabel(),
+            $this->labelTransferLinks->toArray(),
+        ));
+    }
+
+    public function hasLabel(Label $label): bool
+    {
+        foreach ($this->labelTransferLinks as $labelTransferLink) {
+            if ($labelTransferLink->getLabel() === $label) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public function getLinkForLabel(Label $label): LabelTransferLink|null
+    {
+        foreach ($this->labelTransferLinks as $labelTransferLink) {
+            if ($labelTransferLink->getLabel() === $label) {
+                return $labelTransferLink;
+            }
+        }
+
+        return null;
+    }
+
+    public function addLabelLink(LabelTransferLink $labelTransferLink): self
+    {
+        if (! $this->labelTransferLinks->contains($labelTransferLink)) {
+            $this->labelTransferLinks->add($labelTransferLink);
         }
 
         return $this;
     }
 
-    public function removeLabel(Label $label): self
+    public function removeLabelLink(LabelTransferLink $labelTransferLink): self
     {
-        $this->labels->removeElement($label);
+        $this->labelTransferLinks->removeElement($labelTransferLink);
 
         return $this;
     }
@@ -209,17 +251,17 @@ class Transfer
      * - If account is the toAccount (receiver): returns the negated amount (subtract from balance)
      * Returns null if the account is not involved in this transfer.
      */
-    public function getBalanceImpactFor(BankAccount $account): string|null
+    public function getBalanceImpactFor(BankAccount $bankAccount): string|null
     {
         $fromId = $this->fromAccount->getId();
         $toId   = $this->toAccount->getId();
-        $accId  = $account->getId();
+        $accId  = $bankAccount->getId();
 
-        if ($fromId !== null && $accId !== null && (string) $fromId === (string) $accId) {
+        if ($fromId instanceof Uuid && $accId instanceof Uuid && (string) $fromId === (string) $accId) {
             return $this->amount;
         }
 
-        if ($toId !== null && $accId !== null && (string) $toId === (string) $accId) {
+        if ($toId instanceof Uuid && $accId instanceof Uuid && (string) $toId === (string) $accId) {
             return bcsub('0', $this->amount, 2);
         }
 

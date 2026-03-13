@@ -17,7 +17,7 @@ use Symfony\Component\Uid\Uuid;
 use function array_map;
 use function is_string;
 
-/** @implements ProviderInterface<array<TransferApiResource>> */
+/** @implements ProviderInterface<TransferApiResource> */
 class TransfersByAccountProvider implements ProviderInterface
 {
     public function __construct(
@@ -53,4 +53,3 @@ class TransfersByAccountProvider implements ProviderInterface
         );
     }
 }
-

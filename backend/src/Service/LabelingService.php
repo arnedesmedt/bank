@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Service;
 
 use App\Entity\Label;
+use App\Entity\LabelTransferLink;
 use App\Entity\Transfer;
 use App\Repository\LabelRepository;
+use App\Repository\LabelTransferLinkRepository;
 use App\Repository\TransferRepository;
 
 use function array_any;
@@ -16,26 +18,27 @@ class LabelingService
 {
     public function __construct(
         private readonly LabelRepository $labelRepository,
+        private readonly LabelTransferLinkRepository $labelTransferLinkRepository,
         private readonly TransferRepository $transferRepository,
     ) {
     }
 
     /**
-     * Auto-label transfer based on bank account links and regex patterns.
+     * Auto-label a single transfer based on all label rules (bank account and regex).
+     * Only creates automatic links. Existing manual links are never touched.
      */
     public function autoLabel(Transfer $transfer): void
     {
-        // Get all labels
         $labels  = $this->labelRepository->findAll();
         $applied = false;
 
         foreach ($labels as $label) {
-            // Check if transfer should be labeled
-            if (! $this->shouldApplyLabel($label, $transfer)) {
+            if (! $this->matchesLabel($label, $transfer)) {
                 continue;
             }
 
-            $this->applyLabelWithParents($label, $transfer);
+            $this->createOrUpgradeLink($label, $transfer, false);
+            $this->propagateParentLinks($label, $transfer, false);
             $applied = true;
         }
 
@@ -46,11 +49,100 @@ class LabelingService
         $this->transferRepository->save($transfer, true);
     }
 
-    private function shouldApplyLabel(Label $label, Transfer $transfer): bool
+    /**
+     * Auto-assign a label to all existing transfers that match its rules.
+     * Called when a label is created or updated.
+     * Only creates/modifies automatic links; never removes manual links.
+     */
+    public function autoAssignLabelToAllTransfers(Label $label): void
     {
-        // Check bank account links (compare by account number, not object identity)
+        $transfers = $this->transferRepository->findAll(10000, 0);
+
+        foreach ($transfers as $transfer) {
+            if ($this->matchesLabel($label, $transfer)) {
+                $this->createOrUpgradeLink($label, $transfer, false);
+                $this->propagateParentLinks($label, $transfer, false);
+            } else {
+                // Remove only if automatic; manual links are preserved
+                $this->removeAutomaticLink($label, $transfer);
+            }
+        }
+
+        $this->labelTransferLinkRepository->flush();
+    }
+
+    /**
+     * Re-evaluate automatic label links for a specific transfer.
+     * Called when a transfer is updated.
+     */
+    public function reevaluateTransferLinks(Transfer $transfer): void
+    {
+        $labels = $this->labelRepository->findAll();
+
+        foreach ($labels as $label) {
+            if ($this->matchesLabel($label, $transfer)) {
+                $this->createOrUpgradeLink($label, $transfer, false);
+                $this->propagateParentLinks($label, $transfer, false);
+            } else {
+                $this->removeAutomaticLink($label, $transfer);
+            }
+        }
+
+        $this->transferRepository->save($transfer, true);
+    }
+
+    /**
+     * Manually assign a label (and its parents) to a transfer.
+     * Creates a "manual" link that persists regardless of rule changes.
+     */
+    public function manuallyLabelTransfer(Transfer $transfer, Label $label): void
+    {
+        $this->createOrUpgradeLink($label, $transfer, true);
+        $this->propagateParentLinks($label, $transfer, true);
+        $this->transferRepository->save($transfer, true);
+    }
+
+    /**
+     * Remove a label link from a transfer (only explicit/manual removal is allowed).
+     * Returns true if a link was found and removed, false if no link existed.
+     */
+    public function removeLabelFromTransfer(Transfer $transfer, Label $label): bool
+    {
+        $link = $this->labelTransferLinkRepository->findByLabelAndTransfer($label, $transfer);
+
+        if (! $link instanceof LabelTransferLink) {
+            return false;
+        }
+
+        $this->labelTransferLinkRepository->remove($link, true);
+
+        return true;
+    }
+
+    /**
+     * Re-evaluate automatic links for all transfers affected by a bank account change.
+     *
+     * @param array<Label> $affectedLabels
+     */
+    public function reevaluateLinksForLabels(array $affectedLabels): void
+    {
+        foreach ($affectedLabels as $affectedLabel) {
+            $this->autoAssignLabelToAllTransfers($affectedLabel);
+        }
+    }
+
+    /**
+     * Returns true if the label should be applied to the transfer.
+     */
+    public function matchesLabel(Label $label, Transfer $transfer): bool
+    {
+        // Bank account match
         foreach ($label->getLinkedBankAccounts() as $linkedBankAccount) {
             $linkedNumber = $linkedBankAccount->getAccountNumber();
+            if ($linkedNumber === null) {
+                continue;
+            }
+
             if (
                 $transfer->getFromAccount()->getAccountNumber() === $linkedNumber
                 || $transfer->getToAccount()->getAccountNumber() === $linkedNumber
@@ -59,38 +151,68 @@ class LabelingService
             }
         }
 
-        // Check regex patterns
+        // Regex match against reference AND account name (FR-010)
         $reference = $transfer->getReference();
+        $fromName  = $transfer->getFromAccount()->getAccountName() ?? '';
+        $toName    = $transfer->getToAccount()->getAccountName() ?? '';
 
-        return array_any($label->getLinkedRegexes(), static fn ($regex): bool => preg_match($regex, $reference) === 1);
+        return array_any($label->getLinkedRegexes(), static fn ($regex): bool => preg_match($regex, $reference) === 1
+        || preg_match($regex, $fromName) === 1
+        || preg_match($regex, $toName) === 1);
     }
 
     /**
-     * Apply label and all parent labels to transfer.
+     * Create a new LabelTransferLink or update an existing one.
+     * If a manual link already exists and we are creating an automatic one, we leave it as manual.
+     * If creating a manual link, upgrade any existing automatic link to manual.
      */
-    public function applyLabelWithParents(Label $label, Transfer $transfer): void
+    private function createOrUpgradeLink(Label $label, Transfer $transfer, bool $isManual): void
     {
-        // Add the label itself
-        if (! $transfer->getLabels()->contains($label)) {
-            $transfer->addLabel($label);
-        }
+        $existingLink = $this->labelTransferLinkRepository->findByLabelAndTransfer($label, $transfer);
 
-        // Add parent labels recursively
-        $parentLabel = $label->getParentLabel();
-        while ($parentLabel instanceof Label) {
-            if (! $transfer->getLabels()->contains($parentLabel)) {
-                $transfer->addLabel($parentLabel);
+        if ($existingLink instanceof LabelTransferLink) {
+            if ($isManual && ! $existingLink->isManual()) {
+                $existingLink->setIsManual(true);
+                $this->labelTransferLinkRepository->save($existingLink);
             }
 
-            $parentLabel = $parentLabel->getParentLabel();
+            return;
         }
+
+        $labelTransferLink = new LabelTransferLink();
+        $labelTransferLink->setLabel($label);
+        $labelTransferLink->setTransfer($transfer);
+        $labelTransferLink->setIsManual($isManual);
+
+        $this->labelTransferLinkRepository->save($labelTransferLink);
+        $transfer->addLabelLink($labelTransferLink);
     }
 
     /**
-     * Manually add label to transfer (with parent labels).
+     * Remove an automatic link; leaves manual links untouched.
      */
-    public function manuallyLabelTransfer(Transfer $transfer, Label $label): void
+    private function removeAutomaticLink(Label $label, Transfer $transfer): void
     {
-        $this->applyLabelWithParents($label, $transfer);
+        $link = $this->labelTransferLinkRepository->findByLabelAndTransfer($label, $transfer);
+
+        if (! $link instanceof LabelTransferLink || $link->isManual()) {
+            return;
+        }
+
+        $this->labelTransferLinkRepository->remove($link);
+        $transfer->removeLabelLink($link);
+    }
+
+    /**
+     * Propagate label assignment to all parent labels.
+     */
+    private function propagateParentLinks(Label $label, Transfer $transfer, bool $isManual): void
+    {
+        $parentLabel = $label->getParentLabel();
+
+        while ($parentLabel instanceof Label) {
+            $this->createOrUpgradeLink($parentLabel, $transfer, $isManual);
+            $parentLabel = $parentLabel->getParentLabel();
+        }
     }
 }

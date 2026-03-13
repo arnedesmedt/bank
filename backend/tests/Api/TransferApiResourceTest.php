@@ -295,7 +295,11 @@ class TransferApiResourceTest extends BankApiTestCase
             // Own account should have balance -50.00 (sent 50)
             $this->assertNotEmpty($accounts);
             $balances = array_column($accounts, 'totalBalance');
-            $this->assertContains('-50.00', $balances, 'Own account (from) should have balance -50.00 after outgoing transfer');
+            $this->assertContains(
+                '-50.00',
+                $balances,
+                'Own account (from) should have balance -50.00 after outgoing transfer',
+            );
         } finally {
             if (file_exists($tempFile)) {
                 unlink($tempFile);
@@ -311,13 +315,25 @@ class TransferApiResourceTest extends BankApiTestCase
 
         // First import: account A sends -50 to account B (A's own-account CSV)
         // Uses transactionId='001-A'
-        $csvContentA = $this->createInternalTransferCsvContent('BE68539007547034', 'BE71096400007055', '-50,00', '01/01/2024', '001-A');
+        $csvContentA = $this->createInternalTransferCsvContent(
+            'BE68539007547034',
+            'BE71096400007055',
+            '-50,00',
+            '01/01/2024',
+            '001-A',
+        );
         $tempFileA   = tempnam(sys_get_temp_dir(), 'belfius_intA_') . '.csv';
         file_put_contents($tempFileA, $csvContentA);
 
         // Second import: account B sends -50 to account A (B's own-account CSV)
         // Uses transactionId='001-B' (different ID to avoid transactionId dedup before the filter runs)
-        $csvContentB = $this->createInternalTransferCsvContent('BE71096400007055', 'BE68539007547034', '-50,00', '01/01/2024', '001-B');
+        $csvContentB = $this->createInternalTransferCsvContent(
+            'BE71096400007055',
+            'BE68539007547034',
+            '-50,00',
+            '01/01/2024',
+            '001-B',
+        );
         $tempFileB   = tempnam(sys_get_temp_dir(), 'belfius_intB_') . '.csv';
         file_put_contents($tempFileB, $csvContentB);
 
@@ -334,7 +350,7 @@ class TransferApiResourceTest extends BankApiTestCase
                 ],
             ]);
             $this->assertResponseIsSuccessful();
-            $response  = $client->getResponse();
+            $response = $client->getResponse();
             assert($response instanceof Response);
             $firstData = json_decode($response->getContent(), true);
             assert(is_array($firstData));
@@ -352,7 +368,7 @@ class TransferApiResourceTest extends BankApiTestCase
                 ],
             ]);
             $this->assertResponseIsSuccessful();
-            $response   = $client->getResponse();
+            $response = $client->getResponse();
             assert($response instanceof Response);
             $secondData = json_decode($response->getContent(), true);
             assert(is_array($secondData));
@@ -367,7 +383,7 @@ class TransferApiResourceTest extends BankApiTestCase
                 ],
             ]);
             $this->assertResponseIsSuccessful();
-            $response  = $client->getResponse();
+            $response = $client->getResponse();
             assert($response instanceof Response);
             $transfers = json_decode($response->getContent(), true);
             assert(is_array($transfers));
@@ -418,6 +434,3 @@ class TransferApiResourceTest extends BankApiTestCase
         return implode("\r\n", $lines) . "\r\n";
     }
 }
-
-
-

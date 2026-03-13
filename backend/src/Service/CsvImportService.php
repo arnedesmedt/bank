@@ -14,6 +14,7 @@ use Throwable;
 
 use function array_map;
 use function bcadd;
+use function bcsub;
 use function count;
 use function fclose;
 use function feof;
@@ -23,10 +24,8 @@ use function hash;
 use function in_array;
 use function is_numeric;
 use function mb_convert_encoding;
-use function preg_match;
 use function preg_replace;
 use function sprintf;
-use function str_contains;
 use function str_replace;
 use function strtoupper;
 use function trim;
@@ -240,14 +239,27 @@ class CsvImportService
             $transfer->setTransactionId($transactionId);
         }
 
-        $fingerprint = $this->generateFingerprint($date, $amount, (string) $fromAccountNo, (string) $toAccountNo, $reference);
+        $fingerprint = $this->generateFingerprint(
+            $date,
+            $amount,
+            (string) $fromAccountNo,
+            (string) $toAccountNo,
+            $reference,
+        );
         $transfer->setFingerprint($fingerprint);
 
         $isInternal = $bankAccount->isInternal() && $toAccount->isInternal();
         $transfer->setIsInternal($isInternal);
 
         // Filter: if both accounts are internal and a reversed transfer already exists, delete it and skip this one
-        if ($isInternal && $this->transferService->deleteReversedInternalTransfer($bankAccount, $toAccount, $amount, $date)) {
+        if (
+            $isInternal && $this->transferService->deleteReversedInternalTransfer(
+                $bankAccount,
+                $toAccount,
+                $amount,
+                $date,
+            )
+        ) {
             return false;
         }
 
@@ -280,9 +292,7 @@ class CsvImportService
         }
 
         // Insert a space every 4 characters
-        $formatted = (string) preg_replace('/(.{4})(?=.)/', '$1 ', $stripped);
-
-        return $formatted;
+        return (string) preg_replace('/(.{4})(?=.)/', '$1 ', $stripped);
     }
 
     private function getOrCreateBankAccount(
@@ -291,8 +301,8 @@ class CsvImportService
         bool $isInternal,
     ): BankAccount {
         // Only store valid values; set null if not found
-        $normalizedNumber = ($accountNumber !== null && $accountNumber !== '') ? $accountNumber : null;
-        $normalizedName   = ($accountName !== null && $accountName !== '') ? $accountName : null;
+        $normalizedNumber = $accountNumber !== null && $accountNumber !== '' ? $accountNumber : null;
+        $normalizedName   = $accountName !== null && $accountName !== '' ? $accountName : null;
 
         $hash    = BankAccount::calculateHash($normalizedName, $normalizedNumber);
         $account = $this->bankAccountRepository->findByHash($hash);
@@ -318,11 +328,12 @@ class CsvImportService
         return $account;
     }
 
-    private function updateAccountBalance(BankAccount $account, string $amount): void
+    /** @param numeric-string $amount */
+    private function updateAccountBalance(BankAccount $bankAccount, string $amount): void
     {
-        $newBalance = bcadd($account->getTotalBalance(), $amount, 2);
-        $account->setTotalBalance($newBalance);
-        $this->bankAccountRepository->save($account, true);
+        $newBalance = bcadd($bankAccount->getTotalBalance(), $amount, 2);
+        $bankAccount->setTotalBalance($newBalance);
+        $this->bankAccountRepository->save($bankAccount, true);
     }
 
     private function generateFingerprint(
@@ -344,4 +355,3 @@ class CsvImportService
         return hash('sha256', $data);
     }
 }
-

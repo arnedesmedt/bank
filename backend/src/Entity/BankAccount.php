@@ -10,8 +10,10 @@ use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Uid\Uuid;
 
+use function assert;
 use function bcadd;
 use function hash;
+use function is_string;
 use function preg_match;
 use function preg_replace;
 use function strtolower;
@@ -41,6 +43,7 @@ class BankAccount
     #[ORM\Column(type: 'boolean')]
     private bool $isInternal = false;
 
+    /** @var numeric-string */
     #[ORM\Column(type: 'decimal', precision: 15, scale: 2)]
     private string $totalBalance = '0.00';
 
@@ -77,7 +80,7 @@ class BankAccount
     {
         // T010: Strict property handling — store null if missing/empty
         $trimmed           = $accountName !== null ? trim($accountName) : null;
-        $this->accountName = ($trimmed !== null && $trimmed !== '') ? $trimmed : null;
+        $this->accountName = $trimmed !== null && $trimmed !== '' ? $trimmed : null;
 
         return $this;
     }
@@ -119,11 +122,13 @@ class BankAccount
         return $this;
     }
 
+    /** @return numeric-string */
     public function getTotalBalance(): string
     {
         return $this->totalBalance;
     }
 
+    /** @param numeric-string $totalBalance */
     public function setTotalBalance(string $totalBalance): self
     {
         $this->totalBalance = $totalBalance;
@@ -132,6 +137,7 @@ class BankAccount
     }
 
     /**
+     * @param numeric-string $delta
      * T020: Apply a signed delta to the total balance using arbitrary-precision arithmetic.
      * Positive delta increases balance; negative delta decreases balance.
      */
@@ -203,9 +209,8 @@ class BankAccount
             return null;
         }
 
-        // Strip all whitespace
-        /** @var string $stripped */
         $stripped = preg_replace('/\s+/', '', $accountNumber);
+        assert(is_string($stripped));
 
         // Validate: must be BE + 14 digits (total 16 chars)
         if (preg_match('/^BE\d{14}$/i', $stripped) !== 1) {
@@ -215,7 +220,10 @@ class BankAccount
         $upper = strtoupper($stripped);
 
         // Format as 'BEXX XXXX XXXX XXXX'
-        return substr($upper, 0, 4) . ' ' . substr($upper, 4, 4) . ' ' . substr($upper, 8, 4) . ' ' . substr($upper, 12, 4);
+        return substr($upper, 0, 4) . ' '
+            . substr($upper, 4, 4) . ' '
+            . substr($upper, 8, 4) . ' '
+            . substr($upper, 12, 4);
     }
 
     /**

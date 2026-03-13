@@ -40,7 +40,6 @@ class TransferItemProvider implements ProviderInterface
             throw new NotFoundHttpException('Transfer not found');
         }
 
-
         return $this->entityMapper->mapTransferToDto($transfer);
     }
 }

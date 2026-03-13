@@ -1,15 +1,4 @@
 Frontend:
-- Remove the labels from home page and move the creation, editting and deleting of the labels to the label page.
-- Move the importing of the labels to a right vertical menu that can be collapsed and expanded on the main page where are the transfers are listed.
-- Auto update the transfers in the home "transfer page" if the transfers are uploaded and processed.
-- Use the table styling from the transfers also for the bank accounts and labels
-- Add an action column for bank accounts and labels
-- Add an edit button for a bank account
-- Also show if the bank account is internal yes or no (can be done with a sort of checkmark after the name)
-- Add an edit page for a bank account (You are allowed to change the name)
+- Add a bank account detail page where you have an overview of all the linked bank accounts. You can click on each account to see more details, such as transaction history, account balance, and options to manage the account (e.g., edit, delete, or add new accounts).
 
 Backend:
-- If a label is created, auto assign it to already existing transfers, based on the rules of that label (linked bank account or regex)
-- Not only link regexes based on the reference of the transfer, but also on the account name.
-- If a bank account is updated, check if the automated linked labels are still valid and update them accordingly.
-- If a label is updated, check if the automated linked bank accounts are still valid and update them accordingly.

@@ -10,37 +10,67 @@ vi.mock('../src/contexts/AuthContext', () => ({
     useAuth: () => ({ accessToken: 'test-token' }),
 }));
 
-// ─── TransferImport ────────────────────────────────────────────────────────────
+// ─── TransferImport (T016: collapsible side panel) ────────────────────────────
 
 describe('TransferImport', () => {
     beforeEach(() => {
         vi.restoreAllMocks();
     });
 
-    it('renders the file input and import button', () => {
+    it('renders the toggle button', () => {
         render(<TransferImport />);
-        expect(screen.getByText(/Import CSV Transfers/i)).toBeInTheDocument();
-        expect(document.getElementById('file-upload')).toBeInTheDocument();
+        expect(screen.getByTestId('import-panel-toggle')).toBeInTheDocument();
+    });
+
+    it('panel is hidden by default', () => {
+        render(<TransferImport />);
+        const panel = screen.getByTestId('import-panel');
+        // Panel has translate-x-full class when closed
+        expect(panel.className).toContain('translate-x-full');
+    });
+
+    it('opens panel when toggle is clicked', async () => {
+        render(<TransferImport />);
+        fireEvent.click(screen.getByTestId('import-panel-toggle'));
+        const panel = screen.getByTestId('import-panel');
+        await waitFor(() => {
+            expect(panel.className).toContain('translate-x-0');
+        });
+    });
+
+    it('shows file input in open panel', async () => {
+        render(<TransferImport />);
+        fireEvent.click(screen.getByTestId('import-panel-toggle'));
+        await waitFor(() => {
+            expect(screen.getByTestId('file-input')).toBeInTheDocument();
+        });
     });
 
     it('shows success message after a successful import', async () => {
+        const onImportComplete = vi.fn();
         vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
             ok: true,
             json: async () => ({ message: 'Import completed', imported: 3, skipped: 1, errors: [] }),
         }));
 
-        render(<TransferImport />);
+        render(<TransferImport onImportComplete={onImportComplete} />);
 
-        // Select a file first (button only appears after file selection)
+        // Open the panel
+        fireEvent.click(screen.getByTestId('import-panel-toggle'));
+
+        // Select a file
         const file = new File(['date;amount'], 'belfius.csv', { type: 'text/csv' });
-        const input = document.getElementById('file-upload') as HTMLInputElement;
+        const input = screen.getByTestId('file-input');
         fireEvent.change(input, { target: { files: [file] } });
 
-        fireEvent.click(screen.getByRole('button', { name: /Upload & Import/i }));
+        await waitFor(() => expect(screen.getByTestId('upload-button')).toBeInTheDocument());
+        fireEvent.click(screen.getByTestId('upload-button'));
 
         await waitFor(() => {
             expect(screen.getByText(/Import Complete!/i)).toBeInTheDocument();
             expect(screen.getByText(/Imported: 3 transfers/i)).toBeInTheDocument();
+            // T018: callback should be invoked
+            expect(onImportComplete).toHaveBeenCalledOnce();
         });
     });
 
@@ -51,12 +81,14 @@ describe('TransferImport', () => {
         }));
 
         render(<TransferImport />);
+        fireEvent.click(screen.getByTestId('import-panel-toggle'));
 
         const file = new File(['bad data'], 'bad.csv', { type: 'text/csv' });
-        const input = document.getElementById('file-upload') as HTMLInputElement;
+        const input = screen.getByTestId('file-input');
         fireEvent.change(input, { target: { files: [file] } });
 
-        fireEvent.click(screen.getByRole('button', { name: /Upload & Import/i }));
+        await waitFor(() => expect(screen.getByTestId('upload-button')).toBeInTheDocument());
+        fireEvent.click(screen.getByTestId('upload-button'));
 
         await waitFor(() => {
             expect(screen.getByText(/Error: Invalid CSV format/i)).toBeInTheDocument();
@@ -64,14 +96,14 @@ describe('TransferImport', () => {
     });
 });
 
-// ─── TransferList ──────────────────────────────────────────────────────────────
+// ─── TransferList (T018: auto-update, T024: manual/auto label badges) ──────────
 
 describe('TransferList', () => {
     beforeEach(() => {
         vi.restoreAllMocks();
     });
 
-    it('renders transfer rows after loading', async () => {
+    it('renders transfer rows with label badges', async () => {
         vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
             ok: true,
             json: async () => ([
@@ -89,6 +121,7 @@ describe('TransferList', () => {
                     isInternal: false,
                     labelIds: ['l-1'],
                     labelNames: ['Groceries'],
+                    labelLinks: [{ id: 'l-1', name: 'Groceries', isManual: false }],
                 },
             ]),
         }));
@@ -98,6 +131,52 @@ describe('TransferList', () => {
         await waitFor(() => {
             expect(screen.getByText('Shop ABC')).toBeInTheDocument();
             expect(screen.getByText('Groceries purchase')).toBeInTheDocument();
+        });
+    });
+
+    it('T024: shows automatic label badge (⚙) for auto-assigned labels', async () => {
+        vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+            ok: true,
+            json: async () => ([
+                {
+                    id: 't-1', amount: '-10.00', date: '2024-01-01T00:00:00+00:00',
+                    fromAccountNumber: null, fromAccountName: 'Me',
+                    toAccountNumber: null, toAccountName: 'Shop',
+                    reference: 'ref', csvSource: 'x.csv', transactionId: null,
+                    isInternal: false,
+                    labelIds: ['l-1'], labelNames: ['Auto'],
+                    labelLinks: [{ id: 'l-1', name: 'Auto', isManual: false }],
+                },
+            ]),
+        }));
+
+        render(<TransferList />);
+        await waitFor(() => {
+            const badge = screen.getByTitle('Auto-assigned');
+            expect(badge).toBeInTheDocument();
+        });
+    });
+
+    it('T024: shows manual label badge (🖊) for manually-assigned labels', async () => {
+        vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+            ok: true,
+            json: async () => ([
+                {
+                    id: 't-1', amount: '-10.00', date: '2024-01-01T00:00:00+00:00',
+                    fromAccountNumber: null, fromAccountName: 'Me',
+                    toAccountNumber: null, toAccountName: 'Shop',
+                    reference: 'ref', csvSource: 'x.csv', transactionId: null,
+                    isInternal: false,
+                    labelIds: ['l-1'], labelNames: ['Manual'],
+                    labelLinks: [{ id: 'l-1', name: 'Manual', isManual: true }],
+                },
+            ]),
+        }));
+
+        render(<TransferList />);
+        await waitFor(() => {
+            const badge = screen.getByTitle('Manually assigned');
+            expect(badge).toBeInTheDocument();
         });
     });
 
@@ -127,6 +206,4 @@ describe('TransferList', () => {
         });
     });
 });
-
-
 

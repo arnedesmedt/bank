@@ -6,11 +6,13 @@ namespace App\ApiResource;
 
 use ApiPlatform\Metadata\ApiProperty;
 use ApiPlatform\Metadata\ApiResource;
+use ApiPlatform\Metadata\Delete;
 use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\Metadata\Post;
 use App\State\TransferImportProcessor;
 use App\State\TransferItemProvider;
+use App\State\TransferLabelProcessor;
 use App\State\TransferStateProvider;
 use DateTimeImmutable;
 
@@ -33,6 +35,20 @@ use DateTimeImmutable;
             deserialize: false,
             provider: null,
             processor: TransferImportProcessor::class,
+        ),
+        new Post(
+            uriTemplate: '/transfers/{id}/labels/{labelId}',
+            read: false,
+            deserialize: false,
+            provider: null,
+            processor: TransferLabelProcessor::class,
+        ),
+        new Delete(
+            uriTemplate: '/transfers/{id}/labels/{labelId}',
+            status: 200,
+            read: false,
+            provider: null,
+            processor: TransferLabelProcessor::class,
         ),
     ],
 )]
@@ -66,4 +82,12 @@ class TransferApiResource
 
     /** @var array<string> */
     public array $labelNames = [];
+
+    /**
+     * Label links with manual/automatic flag.
+     * Each entry: {id: string, name: string, isManual: bool}
+     *
+     * @var array<array{id: string, name: string, isManual: bool}>
+     */
+    public array $labelLinks = [];
 }

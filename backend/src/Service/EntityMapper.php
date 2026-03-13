@@ -47,14 +47,21 @@ class EntityMapper
         $transferApiResource->transactionId     = $transfer->getTransactionId();
         $transferApiResource->isInternal        = $transfer->isInternal();
 
-        foreach ($transfer->getLabels() as $label) {
+        foreach ($transfer->getLabelTransferLinks() as $labelTransferLink) {
+            $label     = $labelTransferLink->getLabel();
             $labelUuid = $label->getId();
             if ($labelUuid === null) {
                 continue;
             }
 
-            $transferApiResource->labelIds[]   = $labelUuid->toRfc4122();
+            $labelIdStr                        = $labelUuid->toRfc4122();
+            $transferApiResource->labelIds[]   = $labelIdStr;
             $transferApiResource->labelNames[] = $label->getName();
+            $transferApiResource->labelLinks[] = [
+                'id'       => $labelIdStr,
+                'name'     => $label->getName(),
+                'isManual' => $labelTransferLink->isManual(),
+            ];
         }
 
         return $transferApiResource;

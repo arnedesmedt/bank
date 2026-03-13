@@ -192,21 +192,30 @@ describe('LabelManager', () => {
     const user = userEvent.setup();
     const fetchMock = setupFetchMock();
 
-    // Mock POST response
-    fetchMock.mockImplementationOnce(() =>
-      Promise.resolve({
-        ok: true,
-        json: () => Promise.resolve(mockLabels[0]),
-      }),
-    );
-
     render(<LabelManager />);
 
     await waitFor(() => screen.getByTestId('create-label-button'));
+
+    // Set up POST mock AFTER initial load so it doesn't hijack the GET calls
+    fetchMock.mockImplementation((url: string, options?: RequestInit) => {
+      if ((options?.method === 'POST') && /\/api\/labels$/.test(url as string)) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(mockLabels[0]) });
+      }
+      if (/\/api\/labels$/.test(url as string)) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(mockLabels) });
+      }
+      if (/\/api\/bank-accounts$/.test(url as string)) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(mockBankAccounts) });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+    });
+
     fireEvent.click(screen.getByTestId('create-label-button'));
 
-    await user.type(screen.getByTestId('label-name-input'), 'Transport');
-    fireEvent.click(screen.getByTestId('submit-label-button'));
+    const nameInput = screen.getByTestId('label-name-input');
+    await user.type(nameInput, 'Transport');
+    // happy-dom does not propagate submit from button click; trigger form directly
+    fireEvent.submit(nameInput.closest('form')!);
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
@@ -313,12 +322,16 @@ describe('LabelManager', () => {
   });
 
   it('submits PUT request when updating', async () => {
+    const user = userEvent.setup();
     const fetchMock = setupFetchMock();
 
     render(<LabelManager />);
 
     await waitFor(() => screen.getByTestId('edit-label-label-2'));
-    fireEvent.click(screen.getByTestId('edit-label-label-2'));
+    await user.click(screen.getByTestId('edit-label-label-2'));
+
+    // Wait for form to render before overriding mock
+    await waitFor(() => screen.getByTestId('label-name-input'));
 
     // Override fetch to intercept the PUT call (and subsequent reload)
     fetchMock.mockImplementation((url: string, options?: RequestInit) => {
@@ -339,8 +352,10 @@ describe('LabelManager', () => {
     });
 
     const nameInput = screen.getByTestId('label-name-input');
-    fireEvent.change(nameInput, { target: { value: 'Sourdough' } });
-    fireEvent.click(screen.getByTestId('submit-label-button'));
+    await user.clear(nameInput);
+    await user.type(nameInput, 'Sourdough');
+    // happy-dom does not propagate submit from button click; trigger form directly
+    fireEvent.submit(nameInput.closest('form')!);
 
     await waitFor(() => {
       const putCalls = fetchMock.mock.calls.filter(

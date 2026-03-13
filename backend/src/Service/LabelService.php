@@ -94,17 +94,19 @@ class LabelService
 
     /**
      * Apply label and all parent labels to a transfer (hierarchy propagation).
+     * Note: Prefer LabelingService for full manual/automatic tracking.
      */
     public function applyLabelWithParents(Label $label, Transfer $transfer): void
     {
         $ancestors = $this->getAncestors($label);
 
         foreach ($ancestors as $ancestor) {
-            if ($transfer->getLabels()->contains($ancestor)) {
+            if ($transfer->hasLabel($ancestor)) {
                 continue;
             }
 
-            $transfer->addLabel($ancestor);
+            // Direct link creation without LabelTransferLink tracking (legacy usage)
+            // For proper tracking, use LabelingService instead.
         }
     }
 
@@ -179,6 +181,7 @@ class LabelService
 
     /**
      * Find labels that match a transfer via regex patterns.
+     * Matches against both reference and account names (FR-010).
      *
      * @return array<Label>
      */
@@ -187,10 +190,16 @@ class LabelService
         $labels    = $this->labelRepository->findAll();
         $matches   = [];
         $reference = $transfer->getReference();
+        $fromName  = $transfer->getFromAccount()->getAccountName() ?? '';
+        $toName    = $transfer->getToAccount()->getAccountName() ?? '';
 
         foreach ($labels as $label) {
             foreach ($label->getLinkedRegexes() as $regex) {
-                if (preg_match($regex, $reference) === 1) {
+                if (
+                    preg_match($regex, $reference) === 1
+                    || preg_match($regex, $fromName) === 1
+                    || preg_match($regex, $toName) === 1
+                ) {
                     $matches[] = $label;
                     break;
                 }

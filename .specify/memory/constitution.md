@@ -55,6 +55,7 @@ All critical operations (file upload, processing, deduplication, analytics) MUST
 - Feature branches are required for all new features and bugfixes; direct commits to main are prohibited.
 - All user stories and acceptance criteria must be independently testable and demonstrable.
 - Documentation (user and developer) must be updated with each relevant change.
+- New specifications MUST start a new branch from main with a unique prefix number (check the already existing folders).
 
 ## Governance
 
