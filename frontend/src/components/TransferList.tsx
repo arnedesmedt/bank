@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { TransferImport } from './TransferImport';
 import { API_URL } from '../services/apiClient';
+import Amount from './Amount';
 
 interface LabelLink {
   id: string;
@@ -78,11 +79,6 @@ export function TransferList() {
       year: 'numeric',
     });
 
-  const formatAmount = (amount: string) =>
-    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'EUR' }).format(
-      parseFloat(amount),
-    );
-
   if (loading) {
     return (
       <div className="bg-white rounded-lg shadow-md p-6">
@@ -144,8 +140,8 @@ export function TransferList() {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {formatDate(transfer.date)}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {formatAmount(transfer.amount)}
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <Amount amount={transfer.amount} />
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-900">
                         <div className="font-medium">{transfer.fromAccountName}</div>

@@ -10,12 +10,19 @@ vi.mock('../src/contexts/AuthContext', () => ({
     useAuth: () => ({ accessToken: 'test-token' }),
 }));
 
-// Mock BankAccountEditPage to avoid deep rendering
-vi.mock('../src/pages/BankAccountEditPage', () => ({
-    default: ({ onCancel, bankAccountId }: { onCancel: () => void; bankAccountId: string }) => (
-        <div data-testid="edit-page">
-            <span>Editing {bankAccountId}</span>
-            <button onClick={onCancel}>Cancel</button>
+// Mock BankAccountDetailPage to avoid deep rendering
+vi.mock('../src/pages/BankAccountDetailPage', () => ({
+    default: ({
+        onBack,
+        bankAccountId,
+    }: {
+        onBack: () => void;
+        bankAccountId: string;
+        onDeleted: () => void;
+    }) => (
+        <div data-testid="detail-page">
+            <span>Detail for {bankAccountId}</span>
+            <button onClick={onBack}>Back</button>
         </div>
     ),
 }));
@@ -73,22 +80,34 @@ describe('BankAccountsListPage', () => {
         });
     });
 
-    it('shows edit button for each account', async () => {
+    it('shows clickable rows for each account', async () => {
         vi.spyOn(service, 'fetchBankAccounts').mockResolvedValue(mockAccounts);
         render(<BankAccountsListPage />);
         await waitFor(() => {
-            expect(screen.getByTestId('edit-bank-account-1')).toBeInTheDocument();
-            expect(screen.getByTestId('edit-bank-account-2')).toBeInTheDocument();
+            expect(screen.getByTestId('bank-account-row-1')).toBeInTheDocument();
+            expect(screen.getByTestId('bank-account-row-2')).toBeInTheDocument();
         });
     });
 
-    it('navigates to edit page on edit click', async () => {
+    it('navigates to detail page on row click', async () => {
         vi.spyOn(service, 'fetchBankAccounts').mockResolvedValue(mockAccounts);
         render(<BankAccountsListPage />);
-        await waitFor(() => expect(screen.getByTestId('edit-bank-account-1')).toBeInTheDocument());
+        await waitFor(() => expect(screen.getByTestId('bank-account-row-1')).toBeInTheDocument());
 
-        fireEvent.click(screen.getByTestId('edit-bank-account-1'));
-        await waitFor(() => expect(screen.getByTestId('edit-page')).toBeInTheDocument());
+        fireEvent.click(screen.getByTestId('bank-account-row-1'));
+        await waitFor(() => expect(screen.getByTestId('detail-page')).toBeInTheDocument());
+    });
+
+    it('navigates back to list from detail page', async () => {
+        vi.spyOn(service, 'fetchBankAccounts').mockResolvedValue(mockAccounts);
+        render(<BankAccountsListPage />);
+        await waitFor(() => expect(screen.getByTestId('bank-account-row-1')).toBeInTheDocument());
+
+        fireEvent.click(screen.getByTestId('bank-account-row-1'));
+        await waitFor(() => expect(screen.getByTestId('detail-page')).toBeInTheDocument());
+
+        fireEvent.click(screen.getByText('Back'));
+        await waitFor(() => expect(screen.getByText('Bank Accounts')).toBeInTheDocument());
     });
 
     it('shows empty state when no accounts', async () => {
@@ -104,6 +123,14 @@ describe('BankAccountsListPage', () => {
         render(<BankAccountsListPage />);
         await waitFor(() => {
             expect(screen.getByText('Failed to load bank accounts.')).toBeInTheDocument();
+        });
+    });
+
+    it('shows add account button', async () => {
+        vi.spyOn(service, 'fetchBankAccounts').mockResolvedValue(mockAccounts);
+        render(<BankAccountsListPage />);
+        await waitFor(() => {
+            expect(screen.getByTestId('add-bank-account-button')).toBeInTheDocument();
         });
     });
 });

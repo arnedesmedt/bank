@@ -8,9 +8,10 @@ use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProcessorInterface;
 use App\ApiResource\LabelApiResource;
 use App\Entity\Label;
+use App\EventListener\LabelUnlinkListener;
 use App\Repository\LabelRepository;
 use App\Service\EntityMapper;
-use App\Service\LabelingService;
+use App\Service\LabelTransferSyncService;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Uid\Uuid;
 
@@ -22,7 +23,8 @@ class LabelStateProcessor implements ProcessorInterface
     public function __construct(
         private readonly LabelRepository $labelRepository,
         private readonly EntityMapper $entityMapper,
-        private readonly LabelingService $labelingService,
+        private readonly LabelTransferSyncService $labelTransferSyncService,
+        private readonly LabelUnlinkListener $labelUnlinkListener,
     ) {
     }
 
@@ -52,8 +54,13 @@ class LabelStateProcessor implements ProcessorInterface
         $this->entityMapper->mapDtoToLabel($data, $label);
         $this->labelRepository->save($label, true);
 
-        // FR-008: Auto-assign label to all matching existing transfers after create/update
-        $this->labelingService->autoAssignLabelToAllTransfers($label);
+        // T034/T035/T036: Atomically sync transfer-label links via LabelTransferSyncService.
+        // The LabelUnlinkListener detected any bank account collection changes during flush;
+        // we now trigger the transactional sync for the affected labels.
+        $this->labelTransferSyncService->syncTransferLinksForLabel($label);
+
+        // Notify listener to process any pending syncs (including those triggered by collection events)
+        $this->labelUnlinkListener->executePendingSyncs([$label]);
 
         return $this->entityMapper->mapLabelToDto($label);
     }
