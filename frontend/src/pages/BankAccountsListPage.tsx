@@ -217,7 +217,7 @@ const BankAccountsListPage: React.FC = () => {
                         </div>
                     )}
 
-                    <div className="px-6 py-4">
+                    <div>
                         {error !== undefined ? (
                             <EmptyOrErrorState error={error} />
                         ) : accounts.length === 0 ? (

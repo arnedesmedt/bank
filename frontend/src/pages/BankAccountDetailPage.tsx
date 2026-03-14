@@ -342,7 +342,7 @@ const BankAccountDetailPage: React.FC<Props> = ({ bankAccountId, onBack, onDelet
                 <div className="px-6 py-4 border-b border-gray-200">
                     <h3 className="text-lg font-semibold text-gray-800">Transaction History</h3>
                 </div>
-                <div className="p-6">
+                <div>
                     {loadingTransfers ? (
                         <div className="flex items-center gap-2 text-gray-500 text-sm">
                             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500" />
