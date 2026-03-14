@@ -26,7 +26,7 @@ All uploaded CSV files are validated for format and content. The backend MUST de
 **Rationale**: Prevents data corruption and ensures accurate analytics.
 
 ### III. Testability & Quality Gates (NON-NEGOTIABLE)
-All code (frontend and backend) MUST be covered by automated tests: unit, integration, and end-to-end. No feature is considered complete without passing tests for all acceptance criteria. Red-Green-Refactor cycle is enforced.
+All code (frontend and backend) MUST be covered by automated tests: unit, integration, and end-to-end. No feature is considered complete without passing tests for all acceptance criteria. Red-Green-Refactor cycle is enforced. Linting and static analysis tools MUST be integrated into the CI/CD pipeline, and all issues must be resolved before merge. Before commiting, grumphp MUST be run to ensure all tests pass and code quality standards are met.
 
 **Rationale**: Guarantees reliability and enables safe refactoring and extensibility.
 
@@ -52,10 +52,10 @@ All critical operations (file upload, processing, deduplication, analytics) MUST
 
 - All changes require code review by at least one other contributor.
 - CI/CD pipeline MUST enforce passing tests, linting, and static analysis before merge.
-- Feature branches are required for all new features and bugfixes; direct commits to main are prohibited.
+- Feature branches are required for all new features, bugfixes and specifications; direct commits to main are prohibited.
 - All user stories and acceptance criteria must be independently testable and demonstrable.
 - Documentation (user and developer) must be updated with each relevant change.
-- New specifications MUST start a new branch from main with a unique prefix number (check the already existing folders).
+- New specifications MUST start a new branch from main with a unique prefix number (check the already existing folders in the specs folder in the root of this project).
 
 ## Governance
 
