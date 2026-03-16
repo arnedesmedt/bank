@@ -2,6 +2,7 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { TransferImport } from '../src/components/TransferImport';
 import { TransferList } from '../src/components/TransferList';
 
@@ -10,31 +11,30 @@ vi.mock('../src/contexts/AuthContext', () => ({
     useAuth: () => ({ accessToken: 'test-token' }),
 }));
 
-// ─── TransferImport (T016: collapsible side panel) ────────────────────────────
+// ─── TransferImport (US2: responsive import panel) ────────────────────────────
 
 describe('TransferImport', () => {
     beforeEach(() => {
         vi.restoreAllMocks();
+        // Simulate narrow screen by default for accordion tests
+        Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: 800 });
     });
 
-    it('renders the toggle button', () => {
+    it('renders the toggle button on narrow screens', () => {
         render(<TransferImport />);
         expect(screen.getByTestId('import-panel-toggle')).toBeInTheDocument();
     });
 
-    it('panel is hidden by default', () => {
+    it('panel content is hidden by default on narrow screens', () => {
         render(<TransferImport />);
-        const panel = screen.getByTestId('import-panel');
-        // Panel has translate-x-full class when closed
-        expect(panel.className).toContain('translate-x-full');
+        expect(screen.queryByTestId('file-input')).not.toBeInTheDocument();
     });
 
-    it('opens panel when toggle is clicked', async () => {
+    it('opens panel when toggle is clicked on narrow screens', async () => {
         render(<TransferImport />);
         fireEvent.click(screen.getByTestId('import-panel-toggle'));
-        const panel = screen.getByTestId('import-panel');
         await waitFor(() => {
-            expect(panel.className).toContain('translate-x-0');
+            expect(screen.getByTestId('file-input')).toBeInTheDocument();
         });
     });
 
@@ -69,7 +69,6 @@ describe('TransferImport', () => {
         await waitFor(() => {
             expect(screen.getByText(/Import Complete!/i)).toBeInTheDocument();
             expect(screen.getByText(/Imported: 3 transfers/i)).toBeInTheDocument();
-            // T018: callback should be invoked
             expect(onImportComplete).toHaveBeenCalledOnce();
         });
     });
@@ -94,14 +93,27 @@ describe('TransferImport', () => {
             expect(screen.getByText(/Error: Invalid CSV format/i)).toBeInTheDocument();
         });
     });
+
+    it('renders as fixed panel on wide screens (no toggle button)', () => {
+        Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: 1280 });
+        render(<TransferImport />);
+        // On wide screens: no toggle button, panel always visible
+        expect(screen.queryByTestId('import-panel-toggle')).not.toBeInTheDocument();
+        expect(screen.getByTestId('import-panel')).toBeInTheDocument();
+        expect(screen.getByTestId('file-input')).toBeInTheDocument();
+    });
 });
 
-// ─── TransferList (T018: auto-update, T024: manual/auto label badges) ──────────
+// ─── TransferList (US1: clickable bank accounts, label badges) ─────────────────
+
 
 describe('TransferList', () => {
     beforeEach(() => {
         vi.restoreAllMocks();
     });
+
+    const renderWithRouter = (ui: React.ReactElement) =>
+        render(<MemoryRouter>{ui}</MemoryRouter>);
 
     it('renders transfer rows with label badges', async () => {
         vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
@@ -111,8 +123,10 @@ describe('TransferList', () => {
                     id: 't-1',
                     amount: '-50.00',
                     date: '2024-01-15T00:00:00+00:00',
+                    fromAccountId: 'acct-1',
                     fromAccountNumber: 'BE68539007547034',
                     fromAccountName: 'My Account',
+                    toAccountId: 'acct-2',
                     toAccountNumber: 'BE76096123456789',
                     toAccountName: 'Shop ABC',
                     reference: 'Groceries purchase',
@@ -126,11 +140,82 @@ describe('TransferList', () => {
             ]),
         }));
 
-        render(<TransferList />);
+        renderWithRouter(<TransferList />);
 
         await waitFor(() => {
             expect(screen.getByText('Shop ABC')).toBeInTheDocument();
             expect(screen.getByText('Groceries purchase')).toBeInTheDocument();
+        });
+    });
+
+    it('US1: renders bank accounts as clickable links when IDs are provided', async () => {
+        vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+            ok: true,
+            json: async () => ([
+                {
+                    id: 't-1',
+                    amount: '-50.00',
+                    date: '2024-01-15T00:00:00+00:00',
+                    fromAccountId: 'acct-from',
+                    fromAccountNumber: 'BE68539007547034',
+                    fromAccountName: 'My Account',
+                    toAccountId: 'acct-to',
+                    toAccountNumber: 'BE76096123456789',
+                    toAccountName: 'Shop ABC',
+                    reference: 'ref',
+                    csvSource: 'x.csv',
+                    transactionId: null,
+                    isInternal: false,
+                    labelIds: [],
+                    labelNames: [],
+                    labelLinks: [],
+                },
+            ]),
+        }));
+
+        renderWithRouter(<TransferList />);
+
+        await waitFor(() => {
+            const fromLink = screen.getByRole('link', { name: /View account: My Account/i });
+            expect(fromLink).toBeInTheDocument();
+            expect(fromLink).toHaveAttribute('href', '/accounts/acct-from');
+            const toLink = screen.getByRole('link', { name: /View account: Shop ABC/i });
+            expect(toLink).toBeInTheDocument();
+            expect(toLink).toHaveAttribute('href', '/accounts/acct-to');
+        });
+    });
+
+    it('US1: renders plain text (no link) when account IDs are missing', async () => {
+        vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+            ok: true,
+            json: async () => ([
+                {
+                    id: 't-1',
+                    amount: '-10.00',
+                    date: '2024-01-01T00:00:00+00:00',
+                    fromAccountId: null,
+                    fromAccountNumber: null,
+                    fromAccountName: 'Unknown',
+                    toAccountId: null,
+                    toAccountNumber: null,
+                    toAccountName: 'Payee',
+                    reference: 'ref',
+                    csvSource: 'x.csv',
+                    transactionId: null,
+                    isInternal: false,
+                    labelIds: [],
+                    labelNames: [],
+                    labelLinks: [],
+                },
+            ]),
+        }));
+
+        renderWithRouter(<TransferList />);
+
+        await waitFor(() => {
+            expect(screen.getByText('Payee')).toBeInTheDocument();
+            // No links when accountId is null
+            expect(screen.queryByRole('link', { name: /View account: Payee/i })).not.toBeInTheDocument();
         });
     });
 
@@ -140,8 +225,8 @@ describe('TransferList', () => {
             json: async () => ([
                 {
                     id: 't-1', amount: '-10.00', date: '2024-01-01T00:00:00+00:00',
-                    fromAccountNumber: null, fromAccountName: 'Me',
-                    toAccountNumber: null, toAccountName: 'Shop',
+                    fromAccountId: null, fromAccountNumber: null, fromAccountName: 'Me',
+                    toAccountId: null, toAccountNumber: null, toAccountName: 'Shop',
                     reference: 'ref', csvSource: 'x.csv', transactionId: null,
                     isInternal: false,
                     labelIds: ['l-1'], labelNames: ['Auto'],
@@ -150,7 +235,7 @@ describe('TransferList', () => {
             ]),
         }));
 
-        render(<TransferList />);
+        renderWithRouter(<TransferList />);
         await waitFor(() => {
             const badge = screen.getByTitle('Auto-assigned');
             expect(badge).toBeInTheDocument();
@@ -163,8 +248,8 @@ describe('TransferList', () => {
             json: async () => ([
                 {
                     id: 't-1', amount: '-10.00', date: '2024-01-01T00:00:00+00:00',
-                    fromAccountNumber: null, fromAccountName: 'Me',
-                    toAccountNumber: null, toAccountName: 'Shop',
+                    fromAccountId: null, fromAccountNumber: null, fromAccountName: 'Me',
+                    toAccountId: null, toAccountNumber: null, toAccountName: 'Shop',
                     reference: 'ref', csvSource: 'x.csv', transactionId: null,
                     isInternal: false,
                     labelIds: ['l-1'], labelNames: ['Manual'],
@@ -173,7 +258,7 @@ describe('TransferList', () => {
             ]),
         }));
 
-        render(<TransferList />);
+        renderWithRouter(<TransferList />);
         await waitFor(() => {
             const badge = screen.getByTitle('Manually assigned');
             expect(badge).toBeInTheDocument();
@@ -186,7 +271,7 @@ describe('TransferList', () => {
             json: async () => ([]),
         }));
 
-        render(<TransferList />);
+        renderWithRouter(<TransferList />);
 
         await waitFor(() => {
             expect(screen.getByText(/No transfers found/i)).toBeInTheDocument();
@@ -199,7 +284,7 @@ describe('TransferList', () => {
             json: async () => ({}),
         }));
 
-        render(<TransferList />);
+        renderWithRouter(<TransferList />);
 
         await waitFor(() => {
             expect(screen.getByText(/Failed to load transfers/i)).toBeInTheDocument();

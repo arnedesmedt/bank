@@ -86,7 +86,7 @@ const BankAccountDetailPage: React.FC<Props> = ({ bankAccountId, onBack, onDelet
         setSubmitting(true);
         setFormError(null);
         try {
-            const updated = await updateBankAccount(bankAccountId, editName.trim(), accessToken);
+            const updated = await updateBankAccount(bankAccountId, editName.trim(), accessToken, account.accountNumber);
             setAccount(updated);
             setMode('view');
             setSuccessMessage('Bank account updated successfully.');
@@ -388,9 +388,12 @@ const BankAccountDetailPage: React.FC<Props> = ({ bankAccountId, onBack, onDelet
                                         const counterparty = isOutgoing
                                             ? (t.toAccountName ?? t.toAccountNumber ?? '—')
                                             : (t.fromAccountName ?? t.fromAccountNumber ?? '—');
+                                        // t.amount may already be negative; strip the sign first,
+                                        // then reapply based on from/to perspective.
+                                        const absAmount = t.amount.replace(/^-/, '');
                                         const signedAmount = isOutgoing
-                                            ? `-${t.amount}`
-                                            : t.amount;
+                                            ? `-${absAmount}`
+                                            : absAmount;
                                         return (
                                             <tr key={t.id} className="hover:bg-gray-50">
                                                 <td className="px-4 py-3 text-gray-600 whitespace-nowrap">

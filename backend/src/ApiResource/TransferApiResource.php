@@ -61,9 +61,13 @@ class TransferApiResource
 
     public DateTimeImmutable $date;
 
+    public string|null $fromAccountId = null;
+
     public string|null $fromAccountNumber = null;
 
     public string|null $fromAccountName = null;
+
+    public string|null $toAccountId = null;
 
     public string|null $toAccountNumber = null;
 

@@ -23,6 +23,7 @@ use function fopen;
 use function hash;
 use function in_array;
 use function is_numeric;
+use function ltrim;
 use function mb_convert_encoding;
 use function preg_replace;
 use function sprintf;
@@ -266,9 +267,12 @@ class CsvImportService
         $saved = $this->transferService->saveTransfer($transfer);
 
         if ($saved) {
-            // Update balances: from account gets amount added (it sent the money), to account gets amount subtracted
-            $this->updateAccountBalance($bankAccount, $amount);
-            $this->updateAccountBalance($toAccount, bcsub('0', $amount, 2));
+            // Update balances: from account always loses |amount|, to account always gains |amount|.
+            // The stored amount can be negative (outgoing) or positive (incoming) from the CSV,
+            // so we work with the absolute value to avoid double-negation.
+            $absAmount = ltrim($amount, '-');
+            $this->updateAccountBalance($bankAccount, bcsub('0', $absAmount, 2));
+            $this->updateAccountBalance($toAccount, $absAmount);
 
             if (! $isInternal) {
                 $this->labelingService->autoLabel($transfer);

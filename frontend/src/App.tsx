@@ -3,9 +3,19 @@ import { LoginForm } from './components/LoginForm';
 import { TransferList } from './components/TransferList';
 import BankAccountsListPage from './pages/BankAccountsListPage';
 import LabelsListPage from './pages/LabelsListPage';
+import BankAccountDetailPage from './pages/BankAccountDetailPage';
 import Sidebar from './components/Sidebar';
 import TopBar from './components/TopBar';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
+import {
+    BrowserRouter,
+    Routes,
+    Route,
+    Navigate,
+    useNavigate,
+    useLocation,
+    useParams,
+} from 'react-router-dom';
 
 type Page = 'transfers' | 'bank-accounts' | 'labels';
 
@@ -35,10 +45,34 @@ const PAGE_TITLES: Record<Page, string> = {
     labels: 'Labels',
 };
 
+// ── Route wrapper: reads :id param and renders BankAccountDetailPage ─────────
+function BankAccountDetailRoute() {
+    const { id } = useParams<{ id: string }>();
+    const navigate = useNavigate();
+
+    if (!id) return <Navigate to="/accounts" replace />;
+
+    return (
+        <BankAccountDetailPage
+            bankAccountId={id}
+            onBack={() => navigate('/accounts')}
+            onDeleted={() => navigate('/accounts')}
+        />
+    );
+}
+
 function AppContent() {
     const { isAuthenticated, isLoading, user, logout } = useAuth();
-    const [currentPage, setCurrentPage] = useState<Page>('transfers');
+    const navigate = useNavigate();
+    const location = useLocation();
     const [sidebarExpanded, setSidebarExpanded] = useState(false);
+
+    // Derive current page from the URL pathname
+    const currentPage = useMemo<Page>(() => {
+        if (location.pathname.startsWith('/accounts')) return 'bank-accounts';
+        if (location.pathname.startsWith('/labels')) return 'labels';
+        return 'transfers';
+    }, [location.pathname]);
 
     if (isLoading) {
         return (
@@ -61,42 +95,48 @@ function AppContent() {
         { id: 'labels' as Page, label: 'Labels', icon: <LabelsIcon /> },
     ];
 
-    // Sidebar width for offset
     const sidebarWidth = sidebarExpanded ? 'ml-56' : 'ml-16';
 
     return (
         <div className="min-h-screen bg-gray-100 flex">
-            {/* ── Sidebar (T009/T011-T015) ─────────────────────────────────── */}
+            {/* ── Sidebar ──────────────────────────────────────────────────── */}
             <Sidebar
                 expanded={sidebarExpanded}
                 onToggle={() => setSidebarExpanded((prev) => !prev)}
                 pages={navPages}
                 currentPage={currentPage}
                 onNavigate={(id: string) => {
-                    setCurrentPage(id as Page);
+                    if (id === 'transfers') navigate('/transfers');
+                    else if (id === 'bank-accounts') navigate('/accounts');
+                    else if (id === 'labels') navigate('/labels');
                     // Auto-close sidebar on mobile after navigation
                     if (window.innerWidth < 1024) setSidebarExpanded(false);
                 }}
             />
 
-            {/* ── Main area (offset by sidebar width) ─────────────────────── */}
+            {/* ── Main area ────────────────────────────────────────────────── */}
             <div className={`flex flex-col flex-1 min-h-screen transition-all duration-200 ${sidebarWidth}`}>
-                {/* ── Top bar (T017-T020) ──────────────────────────────────── */}
+                {/* ── Top bar ──────────────────────────────────────────────── */}
                 <TopBar
                     title={PAGE_TITLES[currentPage]}
                     userEmail={user?.email}
                     onLogout={logout}
                 />
 
-                {/* ── Page content ──────────────────────────────────────────── */}
+                {/* ── Page content ─────────────────────────────────────────── */}
                 <main
                     className="flex-1 overflow-y-auto px-4 sm:px-6 lg:px-8 py-6"
                     id="main-content"
                     aria-label="Main content"
                 >
-                    {currentPage === 'transfers' && <TransferList />}
-                    {currentPage === 'bank-accounts' && <BankAccountsListPage />}
-                    {currentPage === 'labels' && <LabelsListPage />}
+                    <Routes>
+                        <Route path="/" element={<Navigate to="/transfers" replace />} />
+                        <Route path="/transfers" element={<TransferList />} />
+                        <Route path="/accounts" element={<BankAccountsListPage />} />
+                        <Route path="/accounts/:id" element={<BankAccountDetailRoute />} />
+                        <Route path="/labels" element={<LabelsListPage />} />
+                        <Route path="*" element={<Navigate to="/transfers" replace />} />
+                    </Routes>
                 </main>
             </div>
         </div>
@@ -105,9 +145,11 @@ function AppContent() {
 
 function App() {
     return (
-        <AuthProvider>
-            <AppContent />
-        </AuthProvider>
+        <BrowserRouter>
+            <AuthProvider>
+                <AppContent />
+            </AuthProvider>
+        </BrowserRouter>
     );
 }
 

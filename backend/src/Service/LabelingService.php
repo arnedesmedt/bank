@@ -10,6 +10,7 @@ use App\Entity\Transfer;
 use App\Repository\LabelRepository;
 use App\Repository\LabelTransferLinkRepository;
 use App\Repository\TransferRepository;
+use Symfony\Component\Uid\Uuid;
 
 use function array_any;
 use function preg_match;
@@ -62,8 +63,9 @@ class LabelingService
             if ($this->matchesLabel($label, $transfer)) {
                 $this->createOrUpgradeLink($label, $transfer, false);
                 $this->propagateParentLinks($label, $transfer, false);
-            } else {
-                // Remove only if automatic; manual links are preserved
+            } elseif (! $this->isParentOfLinkedDescendant($label, $transfer)) {
+                // Only remove if the label is not kept as a propagated parent of a
+                // child label that still matches this transfer.
                 $this->removeAutomaticLink($label, $transfer);
             }
         }
@@ -74,18 +76,38 @@ class LabelingService
     /**
      * Re-evaluate automatic label links for a specific transfer.
      * Called when a transfer is updated.
+     *
+     * Two-phase approach to avoid order-dependent bugs:
+     * Phase 1 — add all directly-matching labels and propagate their parents.
+     * Phase 2 — remove automatic links for labels that are no longer needed
+     *            (i.e. don't match directly AND are not a propagated parent of a
+     *             still-matched label).
      */
     public function reevaluateTransferLinks(Transfer $transfer): void
     {
         $labels = $this->labelRepository->findAll();
 
+        // Phase 1: additions — ensures propagated parents are in place before any removals.
+        foreach ($labels as $label) {
+            if (! $this->matchesLabel($label, $transfer)) {
+                continue;
+            }
+
+            $this->createOrUpgradeLink($label, $transfer, false);
+            $this->propagateParentLinks($label, $transfer, false);
+        }
+
+        // Phase 2: removals — safe now because all additions (including propagations) are done.
         foreach ($labels as $label) {
             if ($this->matchesLabel($label, $transfer)) {
-                $this->createOrUpgradeLink($label, $transfer, false);
-                $this->propagateParentLinks($label, $transfer, false);
-            } else {
-                $this->removeAutomaticLink($label, $transfer);
+                continue;
             }
+
+            if ($this->isParentOfLinkedDescendant($label, $transfer)) {
+                continue;
+            }
+
+            $this->removeAutomaticLink($label, $transfer);
         }
 
         $this->transferRepository->save($transfer, true);
@@ -136,16 +158,34 @@ class LabelingService
      */
     public function matchesLabel(Label $label, Transfer $transfer): bool
     {
-        // Bank account match
+        // Bank account match — compare by entity ID so accounts without an account number
+        // (e.g. merchants that only have a name) are still matched correctly.
+        // Fall back to account-number comparison for cases where the same IBAN appears under
+        // different entity instances (e.g. two imports with slightly different names).
+        $fromAccountId     = $transfer->getFromAccount()->getId();
+        $toAccountId       = $transfer->getToAccount()->getId();
+        $fromAccountNumber = $transfer->getFromAccount()->getAccountNumber();
+        $toAccountNumber   = $transfer->getToAccount()->getAccountNumber();
+
         foreach ($label->getLinkedBankAccounts() as $linkedBankAccount) {
+            $linkedId     = $linkedBankAccount->getId();
             $linkedNumber = $linkedBankAccount->getAccountNumber();
-            if ($linkedNumber === null) {
-                continue;
+
+            // Primary: match by entity ID (works even when accountNumber is null)
+            if (
+                $linkedId instanceof Uuid
+                && (
+                    ($fromAccountId instanceof Uuid && $linkedId->equals($fromAccountId))
+                    || ($toAccountId instanceof Uuid && $linkedId->equals($toAccountId))
+                )
+            ) {
+                return true;
             }
 
+            // Fallback: match by account number (handles same IBAN across different entity instances)
             if (
-                $transfer->getFromAccount()->getAccountNumber() === $linkedNumber
-                || $transfer->getToAccount()->getAccountNumber() === $linkedNumber
+                $linkedNumber !== null
+                && ($fromAccountNumber === $linkedNumber || $toAccountNumber === $linkedNumber)
             ) {
                 return true;
             }
@@ -214,5 +254,31 @@ class LabelingService
             $this->createOrUpgradeLink($parentLabel, $transfer, $isManual);
             $parentLabel = $parentLabel->getParentLabel();
         }
+    }
+
+    /**
+     * Returns true if $label is an ancestor of any label that is currently linked
+     * to $transfer. Used to prevent removing a parent label whose presence is
+     * justified by a still-matched child label.
+     */
+    private function isParentOfLinkedDescendant(Label $label, Transfer $transfer): bool
+    {
+        $labelId = $label->getId();
+        if (! $labelId instanceof Uuid) {
+            return false;
+        }
+
+        foreach ($transfer->getLabelTransferLinks() as $labelTransferLink) {
+            $current = $labelTransferLink->getLabel()->getParentLabel();
+            while ($current instanceof Label) {
+                if ($current->getId()?->equals($labelId)) {
+                    return true;
+                }
+
+                $current = $current->getParentLabel();
+            }
+        }
+
+        return false;
     }
 }

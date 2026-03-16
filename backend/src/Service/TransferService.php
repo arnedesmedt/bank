@@ -12,6 +12,7 @@ use DateTimeImmutable;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 
 use function bcsub;
+use function ltrim;
 
 class TransferService
 {
@@ -98,19 +99,21 @@ class TransferService
         }
 
         // Undo balance updates for the reversed transfer.
-        // When the reversed transfer was saved:
-        //   reversedFrom (= toAccount) got += reversedAmount (= amount negated)
-        //   reversedTo   (= fromAccount) got -= reversedAmount
+        // With the fixed balance logic, when the reversed transfer was saved:
+        //   reversedFrom (= toAccount) lost  |reversedAmount|  (balance -= |reversedAmount|)
+        //   reversedTo   (= fromAccount) gained |reversedAmount| (balance += |reversedAmount|)
         // To undo: apply the OPPOSITE of those deltas.
         $bankAccount       = $reversed->getFromAccount();
         $reversedToAccount = $reversed->getToAccount();
         $reversedAmount    = $reversed->getAmount();
+        $absReversedAmount = ltrim($reversedAmount, '-');
 
-        $bankAccount->adjustBalance(bcsub('0', $reversedAmount, 2));
+        // Restore from-account (give back what it lost)
+        $bankAccount->adjustBalance($absReversedAmount);
         $this->bankAccountRepository->save($bankAccount, true);
 
-        // Undo toAccount balance: add back what was subtracted
-        $reversedToAccount->adjustBalance($reversedAmount);
+        // Restore to-account (take back what it gained)
+        $reversedToAccount->adjustBalance(bcsub('0', $absReversedAmount, 2));
         $this->bankAccountRepository->save($reversedToAccount, true);
 
         $this->transferRepository->remove($reversed, true);

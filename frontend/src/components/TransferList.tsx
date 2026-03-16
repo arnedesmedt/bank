@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { TransferImport } from './TransferImport';
 import { API_URL } from '../services/apiClient';
@@ -14,8 +15,10 @@ interface Transfer {
   id: string;
   amount: string;
   date: string;
+  fromAccountId: string | null;
   fromAccountNumber: string | null;
   fromAccountName: string | null;
+  toAccountId: string | null;
   toAccountNumber: string | null;
   toAccountName: string | null;
   reference: string;
@@ -144,12 +147,38 @@ export function TransferList() {
                         <Amount amount={transfer.amount} />
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-900">
-                        <div className="font-medium">{transfer.fromAccountName}</div>
-                        <div className="text-gray-500 text-xs">{transfer.fromAccountNumber}</div>
+                        {transfer.fromAccountId ? (
+                          <Link
+                            to={`/accounts/${transfer.fromAccountId}`}
+                            className="group hover:text-blue-600"
+                            aria-label={`View account: ${transfer.fromAccountName ?? transfer.fromAccountNumber ?? 'Unknown'}`}
+                          >
+                            <div className="font-medium group-hover:underline">{transfer.fromAccountName}</div>
+                            <div className="text-gray-500 text-xs">{transfer.fromAccountNumber}</div>
+                          </Link>
+                        ) : (
+                          <>
+                            <div className="font-medium">{transfer.fromAccountName}</div>
+                            <div className="text-gray-500 text-xs">{transfer.fromAccountNumber}</div>
+                          </>
+                        )}
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-900">
-                        <div className="font-medium">{transfer.toAccountName}</div>
-                        <div className="text-gray-500 text-xs">{transfer.toAccountNumber}</div>
+                        {transfer.toAccountId ? (
+                          <Link
+                            to={`/accounts/${transfer.toAccountId}`}
+                            className="group hover:text-blue-600"
+                            aria-label={`View account: ${transfer.toAccountName ?? transfer.toAccountNumber ?? 'Unknown'}`}
+                          >
+                            <div className="font-medium group-hover:underline">{transfer.toAccountName}</div>
+                            <div className="text-gray-500 text-xs">{transfer.toAccountNumber}</div>
+                          </Link>
+                        ) : (
+                          <>
+                            <div className="font-medium">{transfer.toAccountName}</div>
+                            <div className="text-gray-500 text-xs">{transfer.toAccountNumber}</div>
+                          </>
+                        )}
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">
                         {transfer.reference}

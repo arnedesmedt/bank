@@ -14,6 +14,7 @@ use Symfony\Component\Uid\Uuid;
 use function array_map;
 use function array_values;
 use function bcsub;
+use function ltrim;
 
 #[ORM\Entity(repositoryClass: TransferRepository::class)]
 #[ORM\Table(name: 'transfers')]
@@ -247,8 +248,8 @@ class Transfer
 
     /**
      * T019: Returns the signed balance impact of this transfer for a given bank account.
-     * - If account is the fromAccount (sender): returns the amount as-is (add to balance)
-     * - If account is the toAccount (receiver): returns the negated amount (subtract from balance)
+     * The fromAccount (sender) always loses |amount| → returns negative value.
+     * The toAccount (receiver) always gains |amount| → returns positive value.
      * Returns null if the account is not involved in this transfer.
      */
     public function getBalanceImpactFor(BankAccount $bankAccount): string|null
@@ -257,12 +258,14 @@ class Transfer
         $toId   = $this->toAccount->getId();
         $accId  = $bankAccount->getId();
 
+        $absAmount = ltrim($this->amount, '-');
+
         if ($fromId instanceof Uuid && $accId instanceof Uuid && (string) $fromId === (string) $accId) {
-            return $this->amount;
+            return bcsub('0', $absAmount, 2); // sender always loses money
         }
 
         if ($toId instanceof Uuid && $accId instanceof Uuid && (string) $toId === (string) $accId) {
-            return bcsub('0', $this->amount, 2);
+            return $absAmount; // receiver always gains money
         }
 
         return null;

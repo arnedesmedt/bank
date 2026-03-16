@@ -35,17 +35,23 @@ class EntityMapper
             throw new LogicException('Transfer has no ID');
         }
 
-        $transferApiResource->id                = $uuid->toRfc4122();
-        $transferApiResource->amount            = $transfer->getAmount();
-        $transferApiResource->date              = $transfer->getDate();
+        $transferApiResource->id     = $uuid->toRfc4122();
+        $transferApiResource->amount = $transfer->getAmount();
+        $transferApiResource->date   = $transfer->getDate();
+
+        $fromAccountId                          = $transfer->getFromAccount()->getId();
+        $transferApiResource->fromAccountId     = $fromAccountId?->toRfc4122();
         $transferApiResource->fromAccountNumber = $transfer->getFromAccount()->getAccountNumber();
         $transferApiResource->fromAccountName   = $transfer->getFromAccount()->getAccountName();
-        $transferApiResource->toAccountNumber   = $transfer->getToAccount()->getAccountNumber();
-        $transferApiResource->toAccountName     = $transfer->getToAccount()->getAccountName();
-        $transferApiResource->reference         = $transfer->getReference();
-        $transferApiResource->csvSource         = $transfer->getCsvSource();
-        $transferApiResource->transactionId     = $transfer->getTransactionId();
-        $transferApiResource->isInternal        = $transfer->isInternal();
+
+        $toAccountId                          = $transfer->getToAccount()->getId();
+        $transferApiResource->toAccountId     = $toAccountId?->toRfc4122();
+        $transferApiResource->toAccountNumber = $transfer->getToAccount()->getAccountNumber();
+        $transferApiResource->toAccountName   = $transfer->getToAccount()->getAccountName();
+        $transferApiResource->reference       = $transfer->getReference();
+        $transferApiResource->csvSource       = $transfer->getCsvSource();
+        $transferApiResource->transactionId   = $transfer->getTransactionId();
+        $transferApiResource->isInternal      = $transfer->isInternal();
 
         foreach ($transfer->getLabelTransferLinks() as $labelTransferLink) {
             $label     = $labelTransferLink->getLabel();

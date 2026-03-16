@@ -69,11 +69,12 @@ export async function createBankAccount(
   return response.json() as Promise<BankAccount>;
 }
 
-/** Update a bank account (only accountName is editable). */
+/** Update a bank account (accountName is editable; accountNumber is preserved). */
 export async function updateBankAccount(
   id: string,
   accountName: string,
   accessToken: string,
+  accountNumber?: string | null,
 ): Promise<BankAccount> {
   const response = await fetch(`${API_URL}/api/bank-accounts/${id}`, {
     method: 'PUT',
@@ -82,7 +83,7 @@ export async function updateBankAccount(
       'Content-Type': 'application/json',
       Accept: 'application/json',
     },
-    body: JSON.stringify({ accountName }),
+    body: JSON.stringify({ accountName, accountNumber: accountNumber ?? null }),
   });
 
   if (!response.ok) {
