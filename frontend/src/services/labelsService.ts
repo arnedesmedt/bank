@@ -22,6 +22,91 @@ export function fetchLabels(accessToken: string): Promise<Label[]> {
     return apiGet<Label[]>('/api/labels', accessToken);
 }
 
+/** Fetch a single label by ID. */
+export function fetchLabel(id: string, accessToken: string): Promise<Label> {
+    return apiGet<Label>(`/api/labels/${id}`, accessToken);
+}
+
+/** Create a new label. */
+export async function createLabel(
+    data: Omit<Label, 'id' | 'parentLabelName'>,
+    accessToken: string,
+): Promise<Label> {
+    const response = await fetch(`${API_URL}/api/labels`, {
+        method: 'POST',
+        headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+        },
+        body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+        const err = (await response.json()) as { detail?: string };
+        throw new Error(err.detail ?? 'Failed to create label');
+    }
+
+    return response.json() as Promise<Label>;
+}
+
+/** Update a label by ID. */
+export async function updateLabel(
+    id: string,
+    data: Omit<Label, 'id' | 'parentLabelName'>,
+    accessToken: string,
+): Promise<Label> {
+    const response = await fetch(`${API_URL}/api/labels/${id}`, {
+        method: 'PUT',
+        headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+        },
+        body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+        const err = (await response.json()) as { detail?: string };
+        throw new Error(err.detail ?? 'Failed to update label');
+    }
+
+    return response.json() as Promise<Label>;
+}
+
+/** Delete a label by ID. */
+export async function deleteLabel(id: string, accessToken: string): Promise<void> {
+    const response = await fetch(`${API_URL}/api/labels/${id}`, {
+        method: 'DELETE',
+        headers: {
+            Authorization: `Bearer ${accessToken}`,
+            Accept: 'application/json',
+        },
+    });
+
+    if (!response.ok) {
+        throw new Error('Failed to delete label');
+    }
+}
+
+/** Fetch transfers linked to a specific label. */
+export interface LabelTransfer {
+    id: string;
+    amount: string;
+    date: string;
+    fromAccountName: string | null;
+    fromAccountNumber: string | null;
+    toAccountName: string | null;
+    toAccountNumber: string | null;
+    reference: string;
+    isInternal: boolean;
+    labelLinks: { id: string; name: string; isManual: boolean }[];
+}
+
+export function fetchLabelTransfers(labelId: string, accessToken: string): Promise<LabelTransfer[]> {
+    return apiGet<LabelTransfer[]>(`/api/labels/${labelId}/transfers`, accessToken);
+}
+
 /** Manually assign a label to a transfer. */
 export async function assignLabelToTransfer(
     transferId: string,

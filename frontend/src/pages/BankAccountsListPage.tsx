@@ -60,12 +60,6 @@ const BankAccountsListPage: React.FC = () => {
         setSelectedId(null);
     };
 
-    const handleDeleted = () => {
-        setView('list');
-        setSelectedId(null);
-        loadAccounts();
-        showSuccess('Bank account deleted successfully.');
-    };
 
     const handleAddSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -99,7 +93,6 @@ const BankAccountsListPage: React.FC = () => {
             <BankAccountDetailPage
                 bankAccountId={selectedId}
                 onBack={handleBackToList}
-                onDeleted={handleDeleted}
             />
         );
     }

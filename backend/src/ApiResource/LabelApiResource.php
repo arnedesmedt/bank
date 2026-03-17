@@ -15,14 +15,16 @@ use App\State\LabelDeleteProcessor;
 use App\State\LabelItemProvider;
 use App\State\LabelStateProcessor;
 use App\State\LabelStateProvider;
+use App\State\TransfersByLabelProvider;
 
 /**
  * API resource for labels.
  *
  * Labels categorise transfers and support a parent-child hierarchy.
  * When a label is linked to a bank account or a regex pattern, it is
- * automatically applied to matching transfers during CSV import
- * (POST /api/transfers/import). See specs/001-csv-import-transfers for details.
+ * automatically applied to matching transfers during CSV import.
+ *
+ * T024 [US2]: Added GET /api/labels/{id}/transfers endpoint.
  */
 #[ApiResource(
     shortName: 'Label',
@@ -49,6 +51,10 @@ use App\State\LabelStateProvider;
             uriTemplate: '/labels/{id}',
             provider: LabelItemProvider::class,
             processor: LabelDeleteProcessor::class,
+        ),
+        new GetCollection(
+            uriTemplate: '/labels/{id}/transfers',
+            provider: TransfersByLabelProvider::class,
         ),
     ],
 )]

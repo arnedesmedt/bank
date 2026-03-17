@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { TransferImport } from './TransferImport';
 import { API_URL } from '../services/apiClient';
@@ -30,25 +30,42 @@ interface Transfer {
   labelLinks: LabelLink[];
 }
 
-/**
- * T017/T018: Transfer list with embedded collapsible import panel (right side)
- * and auto-refresh after upload. T024: Shows manual/automatic label badges.
- */
-export function TransferList() {
+const PAGE_SIZE = 30;
+
+interface TransferListProps {
+  hideImportPanel?: boolean;
+  externalRefreshKey?: number;
+}
+
+export function TransferList({ hideImportPanel = false, externalRefreshKey = 0 }: TransferListProps) {
   const { accessToken } = useAuth();
+  const navigate = useNavigate();
+
   const [transfers, setTransfers] = useState<Transfer[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const loadTransfers = useCallback(async () => {
+  // Sentinel element observed at the bottom of the list
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+  // Prevent the observer from firing multiple concurrent fetches
+  const isFetchingRef = useRef(false);
+
+  const fetchPage = useCallback(async (pageNum: number, replace: boolean) => {
     if (!accessToken) return;
+    isFetchingRef.current = true;
 
-    setLoading(true);
+    if (replace) {
+      setInitialLoading(true);
+    } else {
+      setLoadingMore(true);
+    }
     setError(null);
 
     try {
-      const response = await fetch(`${API_URL}/api/transfers?page=${page}`, {
+      const response = await fetch(`${API_URL}/api/transfers?page=${pageNum}`, {
         headers: {
           Authorization: `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
@@ -57,23 +74,66 @@ export function TransferList() {
 
       if (!response.ok) throw new Error('Failed to load transfers');
 
-      const data = (await response.json()) as Transfer[] | unknown;
-      setTransfers(Array.isArray(data) ? (data as Transfer[]) : []);
+      const data = (await response.json()) as unknown;
+      const page_data = Array.isArray(data) ? (data as Transfer[]) : [];
+
+      if (replace) {
+        setTransfers(page_data);
+      } else {
+        setTransfers((prev) => [...prev, ...page_data]);
+      }
+
+      setHasMore(page_data.length >= PAGE_SIZE);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error occurred');
     } finally {
-      setLoading(false);
+      setInitialLoading(false);
+      setLoadingMore(false);
+      isFetchingRef.current = false;
     }
-  }, [page, accessToken]);
+  }, [accessToken]);
 
+  // Reset and reload from page 1 whenever externalRefreshKey changes
   useEffect(() => {
-    void loadTransfers();
-  }, [loadTransfers]);
+    setPage(1);
+    setHasMore(true);
+    void fetchPage(1, true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [externalRefreshKey, accessToken]);
 
-  // T018: Auto-update after import
+  // Load next pages when page increments (but not on the initial load handled above)
+  useEffect(() => {
+    if (page === 1) return;
+    void fetchPage(page, false);
+  }, [page, fetchPage]);
+
+  // IntersectionObserver: when sentinel becomes visible, load next page
+  useEffect(() => {
+    if (!hasMore) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting && !isFetchingRef.current && hasMore) {
+          setPage((prev) => prev + 1);
+        }
+      },
+      { rootMargin: '200px' },
+    );
+
+    const el = sentinelRef.current;
+    if (el) observer.observe(el);
+
+    return () => {
+      if (el) observer.unobserve(el);
+    };
+  }, [hasMore, initialLoading]);
+
+  // T018: Auto-update after import (resets to page 1)
   const handleImportComplete = useCallback(() => {
-    void loadTransfers();
-  }, [loadTransfers]);
+    setPage(1);
+    setHasMore(true);
+    void fetchPage(1, true);
+  }, [fetchPage]);
 
   const formatDate = (dateString: string) =>
     new Date(dateString).toLocaleDateString('en-GB', {
@@ -82,7 +142,7 @@ export function TransferList() {
       year: 'numeric',
     });
 
-  if (loading) {
+  if (initialLoading) {
     return (
       <div className="bg-white rounded-lg shadow-md p-6">
         <div className="flex items-center justify-center py-12">
@@ -93,13 +153,13 @@ export function TransferList() {
     );
   }
 
-  if (error) {
+  if (error && transfers.length === 0) {
     return (
       <div className="bg-white rounded-lg shadow-md p-6">
         <div className="bg-red-50 border border-red-200 rounded p-4">
           <p className="text-red-800">Error: {error}</p>
           <button
-            onClick={() => void loadTransfers()}
+            onClick={() => void fetchPage(1, true)}
             className="mt-2 text-sm text-blue-600 hover:underline"
           >
             Retry
@@ -111,8 +171,7 @@ export function TransferList() {
 
   return (
     <>
-      {/* T016: Right-side collapsible import panel */}
-      <TransferImport onImportComplete={handleImportComplete} />
+      {!hideImportPanel && <TransferImport onImportComplete={handleImportComplete} />}
 
       <div className="bg-white rounded-lg shadow-md">
         <div className="px-6 py-4 border-b border-gray-200">
@@ -121,7 +180,7 @@ export function TransferList() {
 
         {transfers.length === 0 ? (
           <div className="p-6 text-center text-gray-500">
-            No transfers found. Use the ◀ Import button on the right to import a CSV file.
+            No transfers found. Use the Import button to import a CSV file.
           </div>
         ) : (
           <>
@@ -139,7 +198,11 @@ export function TransferList() {
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {transfers.map((transfer) => (
-                    <tr key={transfer.id} className={transfer.isInternal ? 'bg-gray-50' : ''}>
+                    <tr
+                      key={transfer.id}
+                      className={`cursor-pointer hover:bg-blue-50 transition-colors ${transfer.isInternal ? 'bg-gray-50' : ''}`}
+                      onClick={() => navigate(`/transfers/${transfer.id}`)}
+                    >
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {formatDate(transfer.date)}
                       </td>
@@ -150,6 +213,7 @@ export function TransferList() {
                         {transfer.fromAccountId ? (
                           <Link
                             to={`/accounts/${transfer.fromAccountId}`}
+                            onClick={(e) => e.stopPropagation()}
                             className="group hover:text-blue-600"
                             aria-label={`View account: ${transfer.fromAccountName ?? transfer.fromAccountNumber ?? 'Unknown'}`}
                           >
@@ -167,6 +231,7 @@ export function TransferList() {
                         {transfer.toAccountId ? (
                           <Link
                             to={`/accounts/${transfer.toAccountId}`}
+                            onClick={(e) => e.stopPropagation()}
                             className="group hover:text-blue-600"
                             aria-label={`View account: ${transfer.toAccountName ?? transfer.toAccountNumber ?? 'Unknown'}`}
                           >
@@ -190,21 +255,18 @@ export function TransferList() {
                               Internal
                             </span>
                           )}
-                          {/* T024: Show manual/automatic badge distinction */}
                           {(transfer.labelLinks ?? []).map((link) => (
-                            <span
+                            <button
                               key={link.id}
-                              title={link.isManual ? 'Manually assigned' : 'Auto-assigned'}
-                              className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                                link.isManual
-                                  ? 'bg-purple-100 text-purple-800'
-                                  : 'bg-blue-100 text-blue-800'
+                              onClick={(e) => { e.stopPropagation(); navigate(`/labels/${link.id}`); }}
+                              title={link.isManual ? 'Manually assigned – click to view label' : 'Auto-assigned – click to view label'}
+                              className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium cursor-pointer hover:opacity-75 transition-opacity ${
+                                link.isManual ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'
                               }`}
                             >
                               {link.isManual ? '🖊 ' : '⚙ '}{link.name}
-                            </span>
+                            </button>
                           ))}
-                          {/* Fallback for older API responses without labelLinks */}
                           {(!transfer.labelLinks || transfer.labelLinks.length === 0) &&
                             transfer.labelNames.map((label, idx) => (
                               <span
@@ -222,22 +284,27 @@ export function TransferList() {
               </table>
             </div>
 
-            <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
-              <button
-                onClick={() => setPage(Math.max(1, page - 1))}
-                disabled={page === 1}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
-              >
-                Previous
-              </button>
-              <span className="text-sm text-gray-700">Page {page}</span>
-              <button
-                onClick={() => setPage(page + 1)}
-                disabled={transfers.length < 30}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
-              >
-                Next
-              </button>
+            {/* Inline error when more-page load fails */}
+            {error && (
+              <div className="px-6 py-3 bg-red-50 border-t border-red-200 text-red-800 text-sm flex items-center justify-between">
+                <span>Failed to load more transfers.</span>
+                <button onClick={() => void fetchPage(page, false)} className="underline">
+                  Retry
+                </button>
+              </div>
+            )}
+
+            {/* Sentinel + loading indicator */}
+            <div ref={sentinelRef} className="px-6 py-4 flex items-center justify-center min-h-[56px]">
+              {loadingMore && (
+                <div className="flex items-center gap-2 text-sm text-gray-500">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500" />
+                  Loading more…
+                </div>
+              )}
+              {!hasMore && !loadingMore && transfers.length > 0 && (
+                <p className="text-xs text-gray-400">All {transfers.length} transfers loaded</p>
+              )}
             </div>
           </>
         )}

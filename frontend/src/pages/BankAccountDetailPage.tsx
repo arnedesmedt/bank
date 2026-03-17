@@ -1,9 +1,9 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
     fetchBankAccount,
     fetchBankAccountTransfers,
     updateBankAccount,
-    deleteBankAccount,
 } from '../services/bankAccountsService';
 import type { BankAccount, BankAccountTransfer } from '../services/bankAccountsService';
 import { useAuth } from '../contexts/AuthContext';
@@ -12,7 +12,7 @@ import Amount from '../components/Amount';
 interface Props {
     bankAccountId: string;
     onBack: () => void;
-    onDeleted: () => void;
+    onDeleted?: () => void; // kept for API compatibility but not used (T029)
 }
 
 type ViewMode = 'view' | 'edit';
@@ -21,18 +21,17 @@ type ViewMode = 'view' | 'edit';
  * T024/T025/T026/T027/T029 [US3]: Combined bank account detail/edit page.
  * View mode shows account info, balance, and transfer history.
  * Edit mode allows changing the account name.
- * Delete with confirmation dialog.
+ * T029: Delete is intentionally disabled (bank account deletion is not allowed).
  */
-const BankAccountDetailPage: React.FC<Props> = ({ bankAccountId, onBack, onDeleted }) => {
+const BankAccountDetailPage: React.FC<Props> = ({ bankAccountId, onBack }) => {
     const { accessToken } = useAuth();
+    const navigate = useNavigate();
     const [account, setAccount] = useState<BankAccount | null>(null);
     const [transfers, setTransfers] = useState<BankAccountTransfer[]>([]);
     const [mode, setMode] = useState<ViewMode>('view');
     const [loading, setLoading] = useState(true);
     const [loadingTransfers, setLoadingTransfers] = useState(false);
     const [submitting, setSubmitting] = useState(false);
-    const [deleting, setDeleting] = useState(false);
-    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [formError, setFormError] = useState<string | null>(null);
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -98,20 +97,6 @@ const BankAccountDetailPage: React.FC<Props> = ({ bankAccountId, onBack, onDelet
         }
     };
 
-    const handleDelete = async () => {
-        if (!accessToken) return;
-        setDeleting(true);
-        setError(null);
-        try {
-            await deleteBankAccount(bankAccountId, accessToken);
-            onDeleted();
-        } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to delete bank account.');
-            setShowDeleteConfirm(false);
-        } finally {
-            setDeleting(false);
-        }
-    };
 
     const handleCancelEdit = () => {
         setMode('view');
@@ -185,7 +170,7 @@ const BankAccountDetailPage: React.FC<Props> = ({ bankAccountId, onBack, onDelet
                     </div>
 
                     {/* Balance */}
-                    <div className="text-right flex-shrink-0">
+                    <div className="text-right shrink-0">
                         <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Balance</p>
                         <Amount
                             amount={account.totalBalance}
@@ -222,13 +207,6 @@ const BankAccountDetailPage: React.FC<Props> = ({ bankAccountId, onBack, onDelet
                                 data-testid="edit-account-button"
                             >
                                 Edit
-                            </button>
-                            <button
-                                onClick={() => setShowDeleteConfirm(true)}
-                                className="px-4 py-2 bg-red-100 hover:bg-red-200 text-red-700 text-sm font-medium rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-red-400"
-                                data-testid="delete-account-button"
-                            >
-                                Delete
                             </button>
                         </>
                     )}
@@ -294,48 +272,6 @@ const BankAccountDetailPage: React.FC<Props> = ({ bankAccountId, onBack, onDelet
                 </div>
             )}
 
-            {/* ── Delete confirmation dialog ─────────────────────────────────── */}
-            {showDeleteConfirm && (
-                <div
-                    className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
-                    role="dialog"
-                    aria-modal="true"
-                    aria-labelledby="delete-dialog-title"
-                >
-                    <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
-                        <h3
-                            id="delete-dialog-title"
-                            className="text-lg font-semibold text-gray-800 mb-2"
-                        >
-                            Delete Bank Account
-                        </h3>
-                        <p className="text-sm text-gray-600 mb-6">
-                            Are you sure you want to delete{' '}
-                            <strong>{account.accountName ?? 'this account'}</strong>? This action
-                            cannot be undone.
-                        </p>
-                        <div className="flex gap-3">
-                            <button
-                                onClick={() => void handleDelete()}
-                                disabled={deleting}
-                                className="px-5 py-2 bg-red-600 hover:bg-red-700 disabled:bg-gray-400 text-white text-sm font-medium rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-red-400"
-                                data-testid="confirm-delete-button"
-                            >
-                                {deleting ? 'Deleting…' : 'Delete'}
-                            </button>
-                            <button
-                                onClick={() => setShowDeleteConfirm(false)}
-                                disabled={deleting}
-                                className="px-5 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 text-sm font-medium rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-gray-400"
-                                data-testid="cancel-delete-button"
-                                autoFocus
-                            >
-                                Cancel
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
 
             {/* ── Transaction history ───────────────────────────────────────── */}
             <div className="bg-white rounded-lg shadow-md">
@@ -395,7 +331,11 @@ const BankAccountDetailPage: React.FC<Props> = ({ bankAccountId, onBack, onDelet
                                             ? `-${absAmount}`
                                             : absAmount;
                                         return (
-                                            <tr key={t.id} className="hover:bg-gray-50">
+                                            <tr
+                                                key={t.id}
+                                                className="hover:bg-blue-50 cursor-pointer transition-colors"
+                                                onClick={() => navigate(`/transfers/${t.id}`)}
+                                            >
                                                 <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
                                                     {formatDate(t.date)}
                                                 </td>

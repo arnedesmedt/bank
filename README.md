@@ -8,6 +8,12 @@ A modern bank transfer management application with CSV import, labeling, and sta
 - Automatic deduplication and idempotency
 - Label management with parent-child relationships
 - Auto-labeling based on bank accounts and regex patterns
+- **Action bar** with context-sensitive page actions (CSV import button)
+- **Floating notifications** for async operations (import results, errors)
+- **Label detail page** — view linked transfers, edit/delete labels
+- **Transfer detail page** — view label assignments, manually add/remove labels
+- **Label navigation** — click any label badge in the transfer list to open its detail page
+- Bank account deletion is intentionally disabled (data integrity)
 - Statistics and visualizations
 - OAuth2 authentication
 - RESTful API with API Platform

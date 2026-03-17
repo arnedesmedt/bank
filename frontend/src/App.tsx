@@ -1,9 +1,12 @@
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { LoginForm } from './components/LoginForm';
-import { TransferList } from './components/TransferList';
+import { NotificationProvider } from './components/NotificationProvider';
 import BankAccountsListPage from './pages/BankAccountsListPage';
 import LabelsListPage from './pages/LabelsListPage';
 import BankAccountDetailPage from './pages/BankAccountDetailPage';
+import LabelDetailPage from './pages/LabelDetailPage';
+import TransferDetailPage from './pages/TransferDetailPage';
+import TransferListPage from './pages/TransferListPage';
 import Sidebar from './components/Sidebar';
 import TopBar from './components/TopBar';
 import { useState, useMemo } from 'react';
@@ -56,7 +59,6 @@ function BankAccountDetailRoute() {
         <BankAccountDetailPage
             bankAccountId={id}
             onBack={() => navigate('/accounts')}
-            onDeleted={() => navigate('/accounts')}
         />
     );
 }
@@ -131,10 +133,12 @@ function AppContent() {
                 >
                     <Routes>
                         <Route path="/" element={<Navigate to="/transfers" replace />} />
-                        <Route path="/transfers" element={<TransferList />} />
+                        <Route path="/transfers" element={<TransferListPage />} />
+                        <Route path="/transfers/:id" element={<TransferDetailPage />} />
                         <Route path="/accounts" element={<BankAccountsListPage />} />
                         <Route path="/accounts/:id" element={<BankAccountDetailRoute />} />
                         <Route path="/labels" element={<LabelsListPage />} />
+                        <Route path="/labels/:id" element={<LabelDetailPage />} />
                         <Route path="*" element={<Navigate to="/transfers" replace />} />
                     </Routes>
                 </main>
@@ -147,7 +151,9 @@ function App() {
     return (
         <BrowserRouter>
             <AuthProvider>
-                <AppContent />
+                <NotificationProvider>
+                    <AppContent />
+                </NotificationProvider>
             </AuthProvider>
         </BrowserRouter>
     );

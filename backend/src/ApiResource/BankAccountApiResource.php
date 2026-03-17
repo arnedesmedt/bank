@@ -6,12 +6,10 @@ namespace App\ApiResource;
 
 use ApiPlatform\Metadata\ApiProperty;
 use ApiPlatform\Metadata\ApiResource;
-use ApiPlatform\Metadata\Delete;
 use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\Metadata\Post;
 use ApiPlatform\Metadata\Put;
-use App\State\BankAccountDeleteProcessor;
 use App\State\BankAccountItemProvider;
 use App\State\BankAccountStateProcessor;
 use App\State\BankAccountStateProvider;
@@ -20,10 +18,8 @@ use App\State\TransfersByAccountProvider;
 /**
  * API resource for bank accounts.
  *
- * Bank accounts are created automatically when transfers are imported from
- * CSV files via the transfer import feature (POST /api/transfers/import).
- * Both the user's own accounts and counterparty accounts encountered during
- * import are stored here. See specs/001-csv-import-transfers for details.
+ * T028 [US3]: Delete operation intentionally removed — bank accounts cannot be
+ * deleted via the API. Deletion is blocked at the API level.
  */
 #[ApiResource(
     shortName: 'BankAccount',
@@ -45,11 +41,6 @@ use App\State\TransfersByAccountProvider;
             uriTemplate: '/bank-accounts/{id}',
             provider: BankAccountItemProvider::class,
             processor: BankAccountStateProcessor::class,
-        ),
-        new Delete(
-            uriTemplate: '/bank-accounts/{id}',
-            provider: BankAccountItemProvider::class,
-            processor: BankAccountDeleteProcessor::class,
         ),
         new GetCollection(
             uriTemplate: '/bank-accounts/{id}/transfers',
