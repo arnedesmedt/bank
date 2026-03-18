@@ -9,3 +9,4 @@ parameters:
         - public/
         - migrations/
         - tests/bootstrap.php
+    treatPhpDocTypesAsCertain: false

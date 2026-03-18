@@ -27,29 +27,6 @@ export function fetchLabel(id: string, accessToken: string): Promise<Label> {
     return apiGet<Label>(`/api/labels/${id}`, accessToken);
 }
 
-/** Create a new label. */
-export async function createLabel(
-    data: Omit<Label, 'id' | 'parentLabelName'>,
-    accessToken: string,
-): Promise<Label> {
-    const response = await fetch(`${API_URL}/api/labels`, {
-        method: 'POST',
-        headers: {
-            Authorization: `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-            Accept: 'application/json',
-        },
-        body: JSON.stringify(data),
-    });
-
-    if (!response.ok) {
-        const err = (await response.json()) as { detail?: string };
-        throw new Error(err.detail ?? 'Failed to create label');
-    }
-
-    return response.json() as Promise<Label>;
-}
-
 /** Update a label by ID. */
 export async function updateLabel(
     id: string,
@@ -103,8 +80,17 @@ export interface LabelTransfer {
     labelLinks: { id: string; name: string; isManual: boolean }[];
 }
 
-export function fetchLabelTransfers(labelId: string, accessToken: string): Promise<LabelTransfer[]> {
-    return apiGet<LabelTransfer[]>(`/api/labels/${labelId}/transfers`, accessToken);
+export function fetchLabelTransfers(
+    labelId: string,
+    accessToken: string,
+    filters?: { search?: string; dateFrom?: string; dateTo?: string },
+): Promise<LabelTransfer[]> {
+    const params = new URLSearchParams();
+    if (filters?.search) params.set('search', filters.search);
+    if (filters?.dateFrom) params.set('dateFrom', filters.dateFrom);
+    if (filters?.dateTo) params.set('dateTo', filters.dateTo);
+    const query = params.toString();
+    return apiGet<LabelTransfer[]>(`/api/labels/${labelId}/transfers${query ? `?${query}` : ''}`, accessToken);
 }
 
 /** Manually assign a label to a transfer. */

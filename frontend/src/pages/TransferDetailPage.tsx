@@ -52,6 +52,12 @@ const TransferDetailPage: React.FC = () => {
     const [assignError, setAssignError] = useState<string | null>(null);
     const [removingLabelId, setRemovingLabelId] = useState<string | null>(null);
 
+    // Quick-create label modal
+    const [showCreateLabel, setShowCreateLabel] = useState(false);
+    const [newLabelName, setNewLabelName] = useState('');
+    const [creatingLabel, setCreatingLabel] = useState(false);
+    const [createLabelError, setCreateLabelError] = useState<string | null>(null);
+
     const loadTransfer = useCallback(async () => {
         if (!accessToken || !id) return;
         try {
@@ -141,6 +147,46 @@ const TransferDetailPage: React.FC = () => {
             setError(err instanceof Error ? err.message : 'Failed to remove label');
         } finally {
             setRemovingLabelId(null);
+        }
+    };
+
+    const handleCreateLabel = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!accessToken || !newLabelName.trim()) return;
+        setCreatingLabel(true);
+        setCreateLabelError(null);
+        try {
+            const response = await fetch(`${API_URL}/api/labels`, {
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                    'Content-Type': 'application/json',
+                    Accept: 'application/json',
+                },
+                body: JSON.stringify({
+                    name: newLabelName.trim(),
+                    parentLabelId: null,
+                    linkedBankAccountIds: [],
+                    linkedRegexes: [],
+                    maxValue: null,
+                    maxPercentage: null,
+                }),
+            });
+            if (!response.ok) {
+                const err = (await response.json()) as { detail?: string };
+                throw new Error(err.detail ?? 'Failed to create label');
+            }
+            const created = (await response.json()) as { id: string; name: string };
+            // Refresh label list and auto-select the new label
+            const labelsData = await fetchLabels(accessToken);
+            setAllLabels(labelsData);
+            setSelectedLabelId(created.id);
+            setNewLabelName('');
+            setShowCreateLabel(false);
+        } catch (err) {
+            setCreateLabelError(err instanceof Error ? err.message : 'Failed to create label');
+        } finally {
+            setCreatingLabel(false);
         }
     };
 
@@ -359,8 +405,57 @@ const TransferDetailPage: React.FC = () => {
                         >
                             {assigning ? 'Adding…' : 'Add'}
                         </button>
+                        <button
+                            type="button"
+                            onClick={() => { setShowCreateLabel((v) => !v); setCreateLabelError(null); }}
+                            className="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium rounded-md border border-gray-300 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-400"
+                            title="Create a new label"
+                        >
+                            + New
+                        </button>
                     </div>
-                    {availableLabels.length === 0 && transfer.labelLinks.length > 0 && (
+
+                    {/* Quick-create label inline form */}
+                    {showCreateLabel && (
+                        <form
+                            onSubmit={(e) => void handleCreateLabel(e)}
+                            className="mt-3 p-3 bg-gray-50 border border-gray-200 rounded-md space-y-2"
+                        >
+                            <p className="text-xs font-medium text-gray-600">Quick-create a new label:</p>
+                            {createLabelError && (
+                                <p className="text-xs text-red-700 bg-red-50 border border-red-200 rounded px-2 py-1">{createLabelError}</p>
+                            )}
+                            <div className="flex gap-2">
+                                <input
+                                    type="text"
+                                    value={newLabelName}
+                                    onChange={(e) => setNewLabelName(e.target.value)}
+                                    required
+                                    placeholder="Label name…"
+                                    autoFocus
+                                    className="flex-1 border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    aria-label="New label name"
+                                />
+                                <button
+                                    type="submit"
+                                    disabled={creatingLabel || !newLabelName.trim()}
+                                    className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white text-sm font-medium rounded-md transition-colors"
+                                >
+                                    {creatingLabel ? 'Creating…' : 'Create'}
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => { setShowCreateLabel(false); setNewLabelName(''); setCreateLabelError(null); }}
+                                    className="px-3 py-1.5 bg-gray-200 hover:bg-gray-300 text-gray-700 text-sm rounded-md transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                            </div>
+                            <p className="text-xs text-gray-400">You can add bank accounts and regex patterns on the label detail page later.</p>
+                        </form>
+                    )}
+
+                    {availableLabels.length === 0 && transfer.labelLinks.length > 0 && !showCreateLabel && (
                         <p className="mt-2 text-xs text-gray-500">All available labels have been assigned.</p>
                     )}
                 </div>

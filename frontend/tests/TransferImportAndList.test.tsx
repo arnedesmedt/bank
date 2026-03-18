@@ -281,13 +281,15 @@ describe('TransferList', () => {
     it('shows error state when the API fails', async () => {
         vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
             ok: false,
+            status: 500,
+            statusText: 'Internal Server Error',
             json: async () => ({}),
         }));
 
         renderWithRouter(<TransferList />);
 
         await waitFor(() => {
-            expect(screen.getByText(/Failed to load transfers/i)).toBeInTheDocument();
+            expect(screen.getByText(/Error:/i)).toBeInTheDocument();
         });
     });
 });

@@ -6,24 +6,21 @@ namespace App\State;
 
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProviderInterface;
-use App\ApiResource\TransferApiResource;
+use App\ApiResource\GroupByResult;
 use App\Repository\TransferRepository;
-use App\Service\EntityMapper;
 use DateTimeImmutable;
 
 use function array_filter;
 use function array_map;
 use function array_values;
 use function is_array;
-use function is_numeric;
 use function is_string;
 
-/** @implements ProviderInterface<TransferApiResource> */
-class TransferStateProvider implements ProviderInterface
+/** @implements ProviderInterface<GroupByResult> */
+class GroupByStateProvider implements ProviderInterface
 {
     public function __construct(
         private readonly TransferRepository $transferRepository,
-        private readonly EntityMapper $entityMapper,
     ) {
     }
 
@@ -31,29 +28,31 @@ class TransferStateProvider implements ProviderInterface
      * @param array<string, mixed> $uriVariables
      * @param array<string, mixed> $context
      *
-     * @return array<TransferApiResource>
+     * @return array<GroupByResult>
      */
     public function provide(Operation $operation, array $uriVariables = [], array $context = []): object|array|null
     {
         $filters = is_array($context['filters'] ?? null) ? $context['filters'] : [];
 
-        $page = 1;
-        if (isset($filters['page']) && is_numeric($filters['page'])) {
-            $page = (int) $filters['page'];
+        $groupBy  = 'period';
+        $period   = 'month';
+        $dateFrom = null;
+        $dateTo   = null;
+        $labelIds = [];
+
+        if (isset($filters['groupBy']) && is_string($filters['groupBy'])) {
+            $groupBy = match ($filters['groupBy']) {
+                'label'            => 'label',
+                'label_and_period' => 'label_and_period',
+                default            => 'period',
+            };
         }
 
-        $itemsPerPage = 30;
-        $offset       = ($page - 1) * $itemsPerPage;
-
-        // Extract filter parameters
-        $search    = null;
-        $dateFrom  = null;
-        $dateTo    = null;
-        $labelIds  = [];
-        $accountId = null;
-
-        if (isset($filters['search']) && is_string($filters['search']) && $filters['search'] !== '') {
-            $search = $filters['search'];
+        if (isset($filters['period']) && is_string($filters['period'])) {
+            $period = match ($filters['period']) {
+                'quarter', 'year' => $filters['period'],
+                default           => 'month',
+            };
         }
 
         if (isset($filters['dateFrom']) && is_string($filters['dateFrom']) && $filters['dateFrom'] !== '') {
@@ -71,31 +70,28 @@ class TransferStateProvider implements ProviderInterface
         }
 
         if (isset($filters['labelIds']) && is_array($filters['labelIds'])) {
-            $labelIds = array_filter(
+            $labelIds = array_values(array_filter(
                 $filters['labelIds'],
                 static fn ($id): bool => is_string($id) && $id !== '',
-            );
+            ));
         } elseif (isset($filters['labelIds']) && is_string($filters['labelIds']) && $filters['labelIds'] !== '') {
             $labelIds = [$filters['labelIds']];
         }
 
-        if (isset($filters['accountId']) && is_string($filters['accountId']) && $filters['accountId'] !== '') {
-            $accountId = $filters['accountId'];
-        }
+        $rows = $this->transferRepository->groupBy($groupBy, $period, $dateFrom, $dateTo, $labelIds);
 
-        $transfers = $this->transferRepository->findWithFilters(
-            $search,
-            $dateFrom,
-            $dateTo,
-            array_values($labelIds),
-            $accountId,
-            $itemsPerPage,
-            $offset,
-        );
+        return array_map(static function (array $row) use ($groupBy): GroupByResult {
+            $groupByResult                = new GroupByResult();
+            $groupByResult->id            = $groupBy === 'label_and_period'
+                ? ($row['label_id'] ?? '') . '_' . $row['period']
+                : ($row['label_id'] ?? $row['period']);
+            $groupByResult->period        = $row['period'];
+            $groupByResult->labelId       = $row['label_id'] ?? null;
+            $groupByResult->labelName     = $row['label_name'] ?? null;
+            $groupByResult->totalAmount   = $row['total_amount'];
+            $groupByResult->transferCount = $row['transfer_count'];
 
-        return array_map(
-            $this->entityMapper->mapTransferToDto(...),
-            $transfers,
-        );
+            return $groupByResult;
+        }, $rows);
     }
 }

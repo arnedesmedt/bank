@@ -32,9 +32,9 @@ tests/
 : Follow standard conventions
 
 ## Recent Changes
+- 009-action-bar-improvements: Added [if applicable, e.g., PostgreSQL, CoreData, files or N/A]
 - 008-todo-list-updates: Added PHP 8.5 (backend), TypeScript 5.9 (frontend) + Symfony 8, API Platform 3, Doctrine ORM, React 19, Vite 7, TailwindCSS 4
 - 007-transfer-page-routing: Added [if applicable, e.g., PostgreSQL, CoreData, files or N/A]
-- 006-sidebar-layout: Added PHP 8.4+/8.5 (backend), React 19 + TypeScript (frontend) + Symfony 8, API Platform 3, Doctrine ORM, React 19, Vite, TailwindCSS
 
 
 <!-- MANUAL ADDITIONS START -->

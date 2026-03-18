@@ -68,9 +68,18 @@ class Transfer
     #[ORM\Column(type: 'boolean')]
     private bool $isInternal = false;
 
+    #[ORM\ManyToOne(targetEntity: self::class, inversedBy: 'childRefunds')]
+    #[ORM\JoinColumn(name: 'parent_transfer_uuid', referencedColumnName: 'uuid', nullable: true, onDelete: 'SET NULL')]
+    private Transfer|null $parentTransfer = null;
+
+    /** @var Collection<int, Transfer> */
+    #[ORM\OneToMany(targetEntity: self::class, mappedBy: 'parentTransfer')]
+    private Collection $childRefunds;
+
     public function __construct()
     {
         $this->labelTransferLinks = new ArrayCollection();
+        $this->childRefunds       = new ArrayCollection();
     }
 
     public function getId(): Uuid|null
@@ -242,6 +251,43 @@ class Transfer
     public function setIsInternal(bool $isInternal): self
     {
         $this->isInternal = $isInternal;
+
+        return $this;
+    }
+
+    public function getParentTransfer(): Transfer|null
+    {
+        return $this->parentTransfer;
+    }
+
+    public function setParentTransfer(Transfer|null $parentTransfer): self
+    {
+        $this->parentTransfer = $parentTransfer;
+
+        return $this;
+    }
+
+    /** @return Collection<int, Transfer> */
+    public function getChildRefunds(): Collection
+    {
+        return $this->childRefunds;
+    }
+
+    public function addChildRefund(Transfer $transfer): self
+    {
+        if (! $this->childRefunds->contains($transfer)) {
+            $this->childRefunds->add($transfer);
+            $transfer->setParentTransfer($this);
+        }
+
+        return $this;
+    }
+
+    public function removeChildRefund(Transfer $transfer): self
+    {
+        if ($this->childRefunds->removeElement($transfer) && $transfer->getParentTransfer() === $this) {
+            $transfer->setParentTransfer(null);
+        }
 
         return $this;
     }

@@ -42,8 +42,15 @@ export function fetchBankAccount(id: string, accessToken: string): Promise<BankA
 export function fetchBankAccountTransfers(
   id: string,
   accessToken: string,
+  filters?: { search?: string; dateFrom?: string; dateTo?: string; labelIds?: string[] },
 ): Promise<BankAccountTransfer[]> {
-  return apiGet<BankAccountTransfer[]>(`/api/bank-accounts/${id}/transfers`, accessToken);
+  const params = new URLSearchParams();
+  if (filters?.search) params.set('search', filters.search);
+  if (filters?.dateFrom) params.set('dateFrom', filters.dateFrom);
+  if (filters?.dateTo) params.set('dateTo', filters.dateTo);
+  filters?.labelIds?.forEach((lid) => params.append('labelIds[]', lid));
+  const query = params.toString();
+  return apiGet<BankAccountTransfer[]>(`/api/bank-accounts/${id}/transfers${query ? `?${query}` : ''}`, accessToken);
 }
 
 /** Create a new bank account. */

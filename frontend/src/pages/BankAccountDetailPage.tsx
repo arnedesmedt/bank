@@ -1,13 +1,17 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import {
     fetchBankAccount,
     fetchBankAccountTransfers,
     updateBankAccount,
 } from '../services/bankAccountsService';
 import type { BankAccount, BankAccountTransfer } from '../services/bankAccountsService';
+import { fetchLabels } from '../services/labelsService';
+import type { Label } from '../services/labelsService';
 import { useAuth } from '../contexts/AuthContext';
 import Amount from '../components/Amount';
+import { ActionBar } from '../components/ActionBar';
+import type { TransferFilters, LabelOption } from '../components/ActionBar';
+import { useNavigate } from 'react-router-dom';
 
 interface Props {
     bankAccountId: string;
@@ -23,11 +27,15 @@ type ViewMode = 'view' | 'edit';
  * Edit mode allows changing the account name.
  * T029: Delete is intentionally disabled (bank account deletion is not allowed).
  */
+const EMPTY_FILTERS: TransferFilters = { search: '', dateFrom: '', dateTo: '', labelIds: [] };
+
 const BankAccountDetailPage: React.FC<Props> = ({ bankAccountId, onBack }) => {
     const { accessToken } = useAuth();
     const navigate = useNavigate();
     const [account, setAccount] = useState<BankAccount | null>(null);
     const [transfers, setTransfers] = useState<BankAccountTransfer[]>([]);
+    const [availableLabels, setAvailableLabels] = useState<LabelOption[]>([]);
+    const [filters, setFilters] = useState<TransferFilters>(EMPTY_FILTERS);
     const [mode, setMode] = useState<ViewMode>('view');
     const [loading, setLoading] = useState(true);
     const [loadingTransfers, setLoadingTransfers] = useState(false);
@@ -54,24 +62,44 @@ const BankAccountDetailPage: React.FC<Props> = ({ bankAccountId, onBack }) => {
         }
     }, [bankAccountId, accessToken]);
 
-    const loadTransfers = useCallback(async () => {
+    const loadTransfers = useCallback(async (activeFilters: TransferFilters = EMPTY_FILTERS) => {
         if (!accessToken) return;
         setLoadingTransfers(true);
         try {
-            const data = await fetchBankAccountTransfers(bankAccountId, accessToken);
+            const data = await fetchBankAccountTransfers(bankAccountId, accessToken, {
+                search: activeFilters.search || undefined,
+                dateFrom: activeFilters.dateFrom || undefined,
+                dateTo: activeFilters.dateTo || undefined,
+                labelIds: activeFilters.labelIds.length > 0 ? activeFilters.labelIds : undefined,
+            });
             setTransfers(data);
         } catch {
-            // Non-critical — don't block page on transfer load failure
             setTransfers([]);
         } finally {
             setLoadingTransfers(false);
         }
     }, [bankAccountId, accessToken]);
 
+    const loadLabels = useCallback(async () => {
+        if (!accessToken) return;
+        try {
+            const data = await fetchLabels(accessToken);
+            setAvailableLabels(data.map((l: Label) => ({ id: l.id, name: l.name })));
+        } catch {
+            setAvailableLabels([]);
+        }
+    }, [accessToken]);
+
     useEffect(() => {
         void loadAccount();
-        void loadTransfers();
-    }, [loadAccount, loadTransfers]);
+        void loadTransfers(EMPTY_FILTERS);
+        void loadLabels();
+    }, [loadAccount, loadLabels]);
+
+    // Reload transfers whenever filters change
+    useEffect(() => {
+        void loadTransfers(filters);
+    }, [filters, loadTransfers]);
 
     const handleEditSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -142,42 +170,29 @@ const BankAccountDetailPage: React.FC<Props> = ({ bankAccountId, onBack }) => {
 
     if (!account) return null;
 
+
     return (
         <div className="space-y-6">
             {/* ── Header ────────────────────────────────────────────────────── */}
             <div className="bg-white rounded-lg shadow-md p-6">
-                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-                    {/* Account info */}
-                    <div>
-                        <div className="flex items-center gap-3 flex-wrap">
-                            <h2
-                                className="text-2xl font-bold text-gray-800"
-                                data-testid="account-detail-name"
-                            >
-                                {account.accountName ?? '—'}
-                            </h2>
-                            {account.isInternal && (
-                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                    Internal ✓
-                                </span>
-                            )}
-                        </div>
-                        {account.accountNumber && (
-                            <p className="mt-1 text-sm text-gray-500 font-mono">
-                                {account.accountNumber}
-                            </p>
-                        )}
-                    </div>
-
-                    {/* Balance */}
-                    <div className="text-right shrink-0">
-                        <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Balance</p>
-                        <Amount
-                            amount={account.totalBalance}
-                            className="text-2xl"
-                        />
-                    </div>
+                <div className="flex items-center gap-3 flex-wrap">
+                    <h2
+                        className="text-2xl font-bold text-gray-800"
+                        data-testid="account-detail-name"
+                    >
+                        {account.accountName ?? '—'}
+                    </h2>
+                    {account.isInternal && (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                            Internal ✓
+                        </span>
+                    )}
                 </div>
+                {account.accountNumber && (
+                    <p className="mt-1 text-sm text-gray-500 font-mono">
+                        {account.accountNumber}
+                    </p>
+                )}
 
                 {/* Messages */}
                 {successMessage && (
@@ -275,75 +290,94 @@ const BankAccountDetailPage: React.FC<Props> = ({ bankAccountId, onBack }) => {
 
             {/* ── Transaction history ───────────────────────────────────────── */}
             <div className="bg-white rounded-lg shadow-md">
-                <div className="px-6 py-4 border-b border-gray-200">
+                <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
                     <h3 className="text-lg font-semibold text-gray-800">Transaction History</h3>
+                    {transfers.length > 0 && (() => {
+                        const signedAmounts = transfers.map((t) => {
+                            const isOutgoing = t.fromAccountNumber === account.accountNumber;
+                            const abs = Math.abs(parseFloat(t.amount));
+                            return isOutgoing ? -abs : abs;
+                        });
+                        const totalIn  = signedAmounts.filter((a) => a > 0).reduce((s, a) => s + a, 0);
+                        const totalOut = signedAmounts.filter((a) => a < 0).reduce((s, a) => s + a, 0);
+                        const net = totalIn + totalOut;
+                        const fmtNet = (n: number) => `${n < 0 ? '−' : n > 0 ? '+' : ''}${Math.abs(n).toFixed(2)}`;
+                        return (
+                            <div className="flex items-center gap-4 text-sm">
+                                <span className="text-green-600 font-medium">In: +{totalIn.toFixed(2)}</span>
+                                <span className="text-red-600 font-medium">Out: −{Math.abs(totalOut).toFixed(2)}</span>
+                                <span className={`font-semibold ${net >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+                                    Net: {fmtNet(net)}
+                                </span>
+                            </div>
+                        );
+                    })()}
                 </div>
+
+                {/* Action bar with filters */}
+                <ActionBar
+                    filters={filters}
+                    onFiltersChange={setFilters}
+                    availableLabels={availableLabels}
+                />
+
                 <div>
                     {loadingTransfers ? (
-                        <div className="flex items-center gap-2 text-gray-500 text-sm">
+                        <div className="flex items-center gap-2 px-6 py-4 text-gray-500 text-sm">
                             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500" />
                             Loading transactions…
                         </div>
                     ) : transfers.length === 0 ? (
-                        <p className="text-sm text-gray-500">No transactions found for this account.</p>
+                        <p className="px-6 py-8 text-center text-sm text-gray-500">
+                            {filters.search || filters.dateFrom || filters.dateTo || filters.labelIds.length > 0
+                                ? 'No transactions match the current filters.'
+                                : 'No transactions found for this account.'}
+                        </p>
                     ) : (
                         <div className="overflow-x-auto">
                             <table className="min-w-full divide-y divide-gray-200 text-sm" aria-label="Transaction history">
                                 <thead className="bg-gray-50">
                                     <tr>
-                                        <th
-                                            scope="col"
-                                            className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                                        >
-                                            Date
-                                        </th>
-                                        <th
-                                            scope="col"
-                                            className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                                        >
-                                            Reference
-                                        </th>
-                                        <th
-                                            scope="col"
-                                            className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                                        >
-                                            Counterparty
-                                        </th>
-                                        <th
-                                            scope="col"
-                                            className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
-                                        >
-                                            Amount
-                                        </th>
+                                        <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                                        <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reference</th>
+                                        <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Counterparty</th>
+                                        <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Labels</th>
+                                        <th scope="col" className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
                                     </tr>
                                 </thead>
                                 <tbody className="bg-white divide-y divide-gray-100">
                                     {transfers.map((t) => {
-                                        const isOutgoing =
-                                            t.fromAccountNumber === account.accountNumber;
+                                        const isOutgoing = t.fromAccountNumber === account.accountNumber;
                                         const counterparty = isOutgoing
                                             ? (t.toAccountName ?? t.toAccountNumber ?? '—')
                                             : (t.fromAccountName ?? t.fromAccountNumber ?? '—');
-                                        // t.amount may already be negative; strip the sign first,
-                                        // then reapply based on from/to perspective.
                                         const absAmount = t.amount.replace(/^-/, '');
-                                        const signedAmount = isOutgoing
-                                            ? `-${absAmount}`
-                                            : absAmount;
+                                        const signedAmount = isOutgoing ? `-${absAmount}` : absAmount;
                                         return (
                                             <tr
                                                 key={t.id}
-                                                className="hover:bg-blue-50 cursor-pointer transition-colors"
+                                                className="hover:bg-gray-50 cursor-pointer"
                                                 onClick={() => navigate(`/transfers/${t.id}`)}
                                             >
-                                                <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
-                                                    {formatDate(t.date)}
-                                                </td>
-                                                <td className="px-4 py-3 text-gray-700 max-w-xs truncate">
-                                                    {t.reference || '—'}
-                                                </td>
-                                                <td className="px-4 py-3 text-gray-700 whitespace-nowrap">
-                                                    {counterparty}
+                                                <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{formatDate(t.date)}</td>
+                                                <td className="px-4 py-3 text-gray-700 max-w-xs truncate">{t.reference || '—'}</td>
+                                                <td className="px-4 py-3 text-gray-700 whitespace-nowrap">{counterparty}</td>
+                                                <td className="px-4 py-3">
+                                                    <div className="flex flex-wrap gap-1">
+                                                        {(t.labelLinks ?? []).map((link) => (
+                                                            <button
+                                                                key={link.id}
+                                                                type="button"
+                                                                onClick={(e) => { e.stopPropagation(); navigate(`/labels/${link.id}`); }}
+                                                                title={link.isManual ? 'Manually assigned' : 'Auto-assigned'}
+                                                                className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium cursor-pointer hover:opacity-75 transition-opacity ${
+                                                                    link.isManual ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'
+                                                                }`}
+                                                            >
+                                                                {link.isManual ? '🖊 ' : '⚙ '}{link.name}
+                                                            </button>
+                                                        ))}
+                                                    </div>
                                                 </td>
                                                 <td className="px-4 py-3 text-right">
                                                     <Amount amount={signedAmount} />

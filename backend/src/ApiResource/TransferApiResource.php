@@ -94,4 +94,6 @@ class TransferApiResource
      * @var array<array{id: string, name: string, isManual: bool}>
      */
     public array $labelLinks = [];
+
+    public string|null $parentTransferId = null;
 }

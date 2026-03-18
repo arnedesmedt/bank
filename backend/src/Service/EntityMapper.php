@@ -70,6 +70,14 @@ class EntityMapper
             ];
         }
 
+        $parentTransfer = $transfer->getParentTransfer();
+        if ($parentTransfer instanceof Transfer) {
+            $parentUuid = $parentTransfer->getId();
+            if ($parentUuid instanceof Uuid) {
+                $transferApiResource->parentTransferId = $parentUuid->toRfc4122();
+            }
+        }
+
         return $transferApiResource;
     }
 

@@ -9,18 +9,21 @@ use ApiPlatform\State\ProviderInterface;
 use App\ApiResource\TransferApiResource;
 use App\Entity\Label;
 use App\Repository\LabelRepository;
+use App\Repository\TransferRepository;
 use App\Service\EntityMapper;
+use DateTimeImmutable;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Uid\Uuid;
 
 use function array_map;
+use function is_array;
 use function is_string;
 
 /**
  * T024 [US2]: Provides the list of transfers linked to a specific label.
  *
  * Route: GET /api/labels/{id}/transfers
- * Returns the transfers that have this label assigned (manual or automatic).
+ * Supports optional filter query params: search, dateFrom, dateTo.
  *
  * @implements ProviderInterface<TransferApiResource>
  */
@@ -28,6 +31,7 @@ class TransfersByLabelProvider implements ProviderInterface
 {
     public function __construct(
         private readonly LabelRepository $labelRepository,
+        private readonly TransferRepository $transferRepository,
         private readonly EntityMapper $entityMapper,
     ) {
     }
@@ -50,11 +54,37 @@ class TransfersByLabelProvider implements ProviderInterface
             throw new NotFoundHttpException('Label not found');
         }
 
-        // Get transfers from label transfer links
-        $transfers = [];
-        foreach ($label->getLabelTransferLinks() as $labelTransferLink) {
-            $transfers[] = $labelTransferLink->getTransfer();
+        $filters  = is_array($context['filters'] ?? null) ? $context['filters'] : [];
+        $search   = null;
+        $dateFrom = null;
+        $dateTo   = null;
+
+        if (isset($filters['search']) && is_string($filters['search']) && $filters['search'] !== '') {
+            $search = $filters['search'];
         }
+
+        if (isset($filters['dateFrom']) && is_string($filters['dateFrom']) && $filters['dateFrom'] !== '') {
+            $parsed = DateTimeImmutable::createFromFormat('Y-m-d', $filters['dateFrom']);
+            if ($parsed !== false) {
+                $dateFrom = $parsed->setTime(0, 0, 0);
+            }
+        }
+
+        if (isset($filters['dateTo']) && is_string($filters['dateTo']) && $filters['dateTo'] !== '') {
+            $parsed = DateTimeImmutable::createFromFormat('Y-m-d', $filters['dateTo']);
+            if ($parsed !== false) {
+                $dateTo = $parsed->setTime(23, 59, 59);
+            }
+        }
+
+        $transfers = $this->transferRepository->findWithFilters(
+            $search,
+            $dateFrom,
+            $dateTo,
+            [$id],
+            null,
+            10000,
+        );
 
         return array_map(
             $this->entityMapper->mapTransferToDto(...),

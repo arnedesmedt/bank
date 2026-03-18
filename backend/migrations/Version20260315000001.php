@@ -35,12 +35,12 @@ final class Version20260315000001 extends AbstractMigration
              SET total_balance = ba.total_balance + sub.delta
              FROM (
                  SELECT
-                     to_account_uuid   AS account_uuid,
+                     to_account_id   AS account_uuid,
                      ABS(CAST(amount AS NUMERIC)) AS delta
                  FROM transfers
                  UNION ALL
                  SELECT
-                     from_account_uuid AS account_uuid,
+                     from_account_id AS account_uuid,
                      -ABS(CAST(amount AS NUMERIC)) AS delta
                  FROM transfers
              ) sub

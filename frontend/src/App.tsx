@@ -7,6 +7,7 @@ import BankAccountDetailPage from './pages/BankAccountDetailPage';
 import LabelDetailPage from './pages/LabelDetailPage';
 import TransferDetailPage from './pages/TransferDetailPage';
 import TransferListPage from './pages/TransferListPage';
+import GroupByPage from './pages/GroupByPage';
 import Sidebar from './components/Sidebar';
 import TopBar from './components/TopBar';
 import { useState, useMemo } from 'react';
@@ -20,7 +21,7 @@ import {
     useParams,
 } from 'react-router-dom';
 
-type Page = 'transfers' | 'bank-accounts' | 'labels';
+type Page = 'transfers' | 'bank-accounts' | 'labels' | 'group-by';
 
 // ── Icons (inline SVG) ───────────────────────────────────────────────────────
 const TransfersIcon = () => (
@@ -41,11 +42,18 @@ const LabelsIcon = () => (
     </svg>
 );
 
+const GroupByIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true" className="w-5 h-5">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+    </svg>
+);
+
 // ── Page titles map ──────────────────────────────────────────────────────────
 const PAGE_TITLES: Record<Page, string> = {
     transfers: 'Transfers',
     'bank-accounts': 'Bank Accounts',
     labels: 'Labels',
+    'group-by': 'Group By & Analysis',
 };
 
 // ── Route wrapper: reads :id param and renders BankAccountDetailPage ─────────
@@ -59,6 +67,7 @@ function BankAccountDetailRoute() {
         <BankAccountDetailPage
             bankAccountId={id}
             onBack={() => navigate('/accounts')}
+            onDeleted={() => navigate('/accounts')}
         />
     );
 }
@@ -73,6 +82,7 @@ function AppContent() {
     const currentPage = useMemo<Page>(() => {
         if (location.pathname.startsWith('/accounts')) return 'bank-accounts';
         if (location.pathname.startsWith('/labels')) return 'labels';
+        if (location.pathname.startsWith('/group-by')) return 'group-by';
         return 'transfers';
     }, [location.pathname]);
 
@@ -95,6 +105,7 @@ function AppContent() {
         { id: 'transfers' as Page, label: 'Transfers', icon: <TransfersIcon /> },
         { id: 'bank-accounts' as Page, label: 'Bank Accounts', icon: <BankAccountsIcon /> },
         { id: 'labels' as Page, label: 'Labels', icon: <LabelsIcon /> },
+        { id: 'group-by' as Page, label: 'Group By', icon: <GroupByIcon /> },
     ];
 
     const sidebarWidth = sidebarExpanded ? 'ml-56' : 'ml-16';
@@ -111,6 +122,7 @@ function AppContent() {
                     if (id === 'transfers') navigate('/transfers');
                     else if (id === 'bank-accounts') navigate('/accounts');
                     else if (id === 'labels') navigate('/labels');
+                    else if (id === 'group-by') navigate('/group-by');
                     // Auto-close sidebar on mobile after navigation
                     if (window.innerWidth < 1024) setSidebarExpanded(false);
                 }}
@@ -139,6 +151,7 @@ function AppContent() {
                         <Route path="/accounts/:id" element={<BankAccountDetailRoute />} />
                         <Route path="/labels" element={<LabelsListPage />} />
                         <Route path="/labels/:id" element={<LabelDetailPage />} />
+                        <Route path="/group-by" element={<GroupByPage />} />
                         <Route path="*" element={<Navigate to="/transfers" replace />} />
                     </Routes>
                 </main>

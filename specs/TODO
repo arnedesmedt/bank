@@ -1,6 +1,21 @@
+- Add the action bar with the filters also in the bank account detail page and the label detail page, so we can also filter the linked transfers.
+- Add the total amount based on the filtered transfers in the label detail page.
+- Change the total amount according to the filtered transfers in the bank account detail page.
+- Also add the action bar with the filters in the bank account list page. Based on the filters, the total amount should be updated.
+- Make it possible to do a multi select of transfers in the list view and then perform actions on them:
+    - Apply label (manually)
+    - Remove label
+    - Mark them as a refund of another transfer:
+        - So it should be possible to store a parent transfer for a refund transfer.
+        - The refund transfers are then placed under (indented) the parent transfer in the list view (expand and collapsable). The parent transfer amount is updated with the amount of the refunds.
+- Add a group by page where we can do the following:
+    - group transfers by period (month, quarter, year). We should have the ability to mark those periods as relative or absolute. Where relative means from now, minus one month, minus two months, ... And absolute means from now to the beginning of this month, from the end of previous month, to the beginning of previous month,... : The default selected value is year + absolute.
+    - group by label (all labels)
+    - filter by label, by default all labels are selected.
+    - The result is an overview per label and per period with a total amount.
+ - Add a graph page, where we can visualize the content of the group by page in graphs.
+    - It has the same action bar as the group by page, so we can filter the data.
+    - The graph should be interactive, so you can click on a bar in the graph and then you are taken to the list view with the filters applied for that period and label.
 
-
-General:
-- Filter on start and end date, label, bank account, etc.
-- Group tranfers by period. For example, group by month, quarter, year, etc. And show the total balance for each period.
-- Terugbetalingen should be abled to link to the original transfer so we could calculate what is our part that we paid for that transfer.
+    Next specs:
+    - Make the label list page the same as the bank account list page. It also needs a more table like view. Clicking a label should navigate to the label detail page.

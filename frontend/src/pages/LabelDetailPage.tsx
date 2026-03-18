@@ -13,6 +13,10 @@ import { fetchLabels } from '../services/labelsService';
 import { fetchBankAccounts } from '../services/bankAccountsService';
 import type { BankAccount } from '../services/bankAccountsService';
 import Amount from '../components/Amount';
+import { ActionBar } from '../components/ActionBar';
+import type { TransferFilters } from '../components/ActionBar';
+
+const EMPTY_FILTERS: TransferFilters = { search: '', dateFrom: '', dateTo: '', labelIds: [] };
 
 /**
  * T018/T021 [US2]: Label detail page.
@@ -31,7 +35,9 @@ const LabelDetailPage: React.FC = () => {
     const [allLabels, setAllLabels] = useState<Label[]>([]);
     const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
     const [loading, setLoading] = useState(true);
+    const [loadingTransfers, setLoadingTransfers] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [transferFilters, setTransferFilters] = useState<TransferFilters>(EMPTY_FILTERS);
 
     // Edit state
     const [isEditing, setIsEditing] = useState(false);
@@ -71,9 +77,32 @@ const LabelDetailPage: React.FC = () => {
         }
     }, [id, accessToken]);
 
+    const loadFilteredTransfers = useCallback(async (f: TransferFilters) => {
+        if (!accessToken || !id) return;
+        setLoadingTransfers(true);
+        try {
+            const data = await fetchLabelTransfers(id, accessToken, {
+                search: f.search || undefined,
+                dateFrom: f.dateFrom || undefined,
+                dateTo: f.dateTo || undefined,
+            });
+            setTransfers(data);
+        } catch {
+            // keep previous results on error
+        } finally {
+            setLoadingTransfers(false);
+        }
+    }, [id, accessToken]);
+
     useEffect(() => {
         void loadData();
     }, [loadData]);
+
+    // Reload transfers whenever filters change (loadData handles the initial unfiltered load)
+    useEffect(() => {
+        void loadFilteredTransfers(transferFilters);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [transferFilters]);
 
     const openEdit = () => {
         if (!label) return;
@@ -134,7 +163,10 @@ const LabelDetailPage: React.FC = () => {
             );
             setLabel(updated);
             setIsEditing(false);
-            void loadData(); // Reload transfers in case rules changed
+            void loadData(); // Reload all (which also resets transfers to unfiltered)
+            if (transferFilters.search || transferFilters.dateFrom || transferFilters.dateTo) {
+                void loadFilteredTransfers(transferFilters);
+            }
         } catch (err) {
             setFormError(err instanceof Error ? err.message : 'Failed to save label');
         } finally {
@@ -457,15 +489,47 @@ const LabelDetailPage: React.FC = () => {
             {/* ── Linked Transfers ────────────────────────────────────────── */}
             <div className="bg-white rounded-lg shadow-md">
                 <div className="px-6 py-4 border-b border-gray-200">
-                    <h2 className="text-lg font-semibold text-gray-800">
-                        Linked Transfers{' '}
-                        <span className="text-gray-400 text-sm font-normal">({transfers.length})</span>
-                    </h2>
+                    <div className="flex items-center justify-between">
+                        <h2 className="text-lg font-semibold text-gray-800">
+                            Linked Transfers{' '}
+                            <span className="text-gray-400 text-sm font-normal">({transfers.length})</span>
+                        </h2>
+                        {transfers.length > 0 && (() => {
+                            const amounts = transfers.map((t) => parseFloat(t.amount));
+                            const totalIn  = amounts.filter((a) => a > 0).reduce((s, a) => s + a, 0);
+                            const totalOut = amounts.filter((a) => a < 0).reduce((s, a) => s + a, 0);
+                            const net = totalIn + totalOut;
+                            const fmtNet = (n: number) => `${n < 0 ? '−' : n > 0 ? '+' : ''}${Math.abs(n).toFixed(2)}`;
+                            return (
+                                <div className="flex items-center gap-4 text-sm">
+                                    <span className="text-green-600 font-medium">In: +{totalIn.toFixed(2)}</span>
+                                    <span className="text-red-600 font-medium">Out: −{Math.abs(totalOut).toFixed(2)}</span>
+                                    <span className={`font-semibold ${net >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+                                        Net: {fmtNet(net)}
+                                    </span>
+                                </div>
+                            );
+                        })()}
+                    </div>
                 </div>
+
+                {/* Action bar: search + date range */}
+                <ActionBar
+                    filters={transferFilters}
+                    onFiltersChange={setTransferFilters}
+                />
+
                 <div>
-                    {transfers.length === 0 ? (
+                    {loadingTransfers ? (
+                        <div className="flex items-center gap-2 px-6 py-4 text-gray-500 text-sm">
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500" />
+                            Loading transfers…
+                        </div>
+                    ) : transfers.length === 0 ? (
                         <p className="px-6 py-8 text-center text-gray-500 text-sm">
-                            No transfers linked to this label yet.
+                            {transferFilters.search || transferFilters.dateFrom || transferFilters.dateTo
+                                ? 'No transfers match the current filters.'
+                                : 'No transfers linked to this label yet.'}
                         </p>
                     ) : (
                         <div className="overflow-x-auto">
