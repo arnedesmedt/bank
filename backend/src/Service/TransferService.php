@@ -15,6 +15,7 @@ use DateTimeImmutable;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Doctrine\ORM\EntityManagerInterface;
 use InvalidArgumentException;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\Uid\Uuid;
 
 use function bcsub;
@@ -27,6 +28,7 @@ class TransferService
         private readonly BankAccountRepository $bankAccountRepository,
         private readonly LabelRepository $labelRepository,
         private readonly EntityManagerInterface $entityManager,
+        private readonly LoggerInterface $logger,
     ) {
     }
 
@@ -36,26 +38,49 @@ class TransferService
      */
     public function saveTransfer(Transfer $transfer): bool
     {
-        // Check for duplicate by transaction ID
-        if ($transfer->getTransactionId() !== null) {
-            $existing = $this->transferRepository->findByTransactionId($transfer->getTransactionId());
-            if ($existing instanceof Transfer) {
-                return false; // Duplicate found
-            }
-        }
-
-        // Check for duplicate by fingerprint
+        // Check for duplicate by fingerprint only (transaction ID uniqueness removed)
         $existing = $this->transferRepository->findByFingerprint($transfer->getFingerprint());
         if ($existing instanceof Transfer) {
+            $this->logger->warning('Duplicate transfer detected by fingerprint', [
+                'newTransferUuid' => $transfer->getId()?->toRfc4122(),
+                'existingTransferUuid' => $existing->getId()?->toRfc4122(),
+                'fingerprint' => $transfer->getFingerprint(),
+                'amount' => $transfer->getAmount(),
+                'date' => $transfer->getDate()->format('Y-m-d'),
+                'fromAccount' => $transfer->getFromAccount()->getAccountNumber(),
+                'toAccount' => $transfer->getToAccount()->getAccountNumber(),
+                'csvSource' => $transfer->getCsvSource(),
+                'duplicateType' => 'fingerprint',
+            ]);
+
             return false; // Duplicate found
         }
 
         try {
             $this->transferRepository->save($transfer, true);
 
+            $this->logger->debug('Transfer successfully saved', [
+                'transferUuid' => $transfer->getId()?->toRfc4122(),
+                'transactionId' => $transfer->getTransactionId(),
+                'amount' => $transfer->getAmount(),
+                'date' => $transfer->getDate()->format('Y-m-d'),
+                'csvSource' => $transfer->getCsvSource(),
+            ]);
+
             return true;
-        } catch (UniqueConstraintViolationException) {
+        } catch (UniqueConstraintViolationException $uniqueConstraintViolationException) {
             // Race condition: another process saved the same transfer
+            $this->logger->warning('Duplicate transfer detected by database constraint (race condition)', [
+                'transferUuid' => $transfer->getId()?->toRfc4122(),
+                'transactionId' => $transfer->getTransactionId(),
+                'fingerprint' => $transfer->getFingerprint(),
+                'amount' => $transfer->getAmount(),
+                'date' => $transfer->getDate()->format('Y-m-d'),
+                'csvSource' => $transfer->getCsvSource(),
+                'duplicateType' => 'database_constraint',
+                'error' => $uniqueConstraintViolationException->getMessage(),
+            ]);
+
             return false;
         }
     }

@@ -59,7 +59,7 @@ class Transfer
     #[ORM\Column(type: 'string', length: 255)]
     private string $csvSource;
 
-    #[ORM\Column(type: 'string', length: 255, unique: true, nullable: true)]
+    #[ORM\Column(type: 'string', length: 255, nullable: true)]
     private string|null $transactionId = null;
 
     #[ORM\Column(type: 'string', length: 255, unique: true)]

@@ -45,12 +45,17 @@ class TransferStateProvider implements ProviderInterface
         $itemsPerPage = 30;
         $offset       = ($page - 1) * $itemsPerPage;
 
-        // Extract filter parameters
-        $search    = null;
-        $dateFrom  = null;
-        $dateTo    = null;
-        $labelIds  = [];
-        $accountId = null;
+        $search     = null;
+        $dateFrom   = null;
+        $dateTo     = null;
+        $labelIds   = [];
+        $accountId  = null;
+        $accountIds = [];
+        $accountId  = null;
+        $dateFrom   = null;
+        $dateTo     = null;
+        $labelIds   = [];
+        $accountId  = null;
 
         if (isset($filters['search']) && is_string($filters['search']) && $filters['search'] !== '') {
             $search = $filters['search'];
@@ -79,6 +84,13 @@ class TransferStateProvider implements ProviderInterface
             $labelIds = [$filters['labelIds']];
         }
 
+        if (isset($filters['accountIds']) && is_array($filters['accountIds'])) {
+            $accountIds = array_values(array_filter(
+                $filters['accountIds'],
+                static fn ($id): bool => is_string($id) && $id !== '',
+            ));
+        }
+
         if (isset($filters['accountId']) && is_string($filters['accountId']) && $filters['accountId'] !== '') {
             $accountId = $filters['accountId'];
         }
@@ -88,6 +100,7 @@ class TransferStateProvider implements ProviderInterface
             $dateFrom,
             $dateTo,
             array_values($labelIds),
+            $accountIds,
             $accountId,
             $itemsPerPage,
             $offset,

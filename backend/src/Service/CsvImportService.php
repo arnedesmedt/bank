@@ -9,6 +9,7 @@ use App\Entity\Transfer;
 use App\Repository\BankAccountRepository;
 use DateTimeImmutable;
 use InvalidArgumentException;
+use Psr\Log\LoggerInterface;
 use RuntimeException;
 use Throwable;
 
@@ -67,6 +68,7 @@ class CsvImportService
     private const int COL_REFERENCE = 14; // Mededelingen
 
     public function __construct(
+        private readonly LoggerInterface $logger,
         private readonly BankAccountRepository $bankAccountRepository,
         private readonly TransferService $transferService,
         private readonly LabelingService $labelingService,
@@ -76,7 +78,9 @@ class CsvImportService
     /**
      * @return array{
      *     imported: int,
-     *     skipped: int,
+     *     skippedDuplicates: int,
+     *     skippedReversedInternal: int,
+     *     skippedInvalidData: int,
      *     errors: array<string>
      * }
      */
@@ -92,7 +96,9 @@ class CsvImportService
     /**
      * @return array{
      *     imported: int,
-     *     skipped: int,
+     *     skippedDuplicates: int,
+     *     skippedReversedInternal: int,
+     *     skippedInvalidData: int,
      *     errors: array<string>
      * }
      */
@@ -103,9 +109,13 @@ class CsvImportService
             throw new RuntimeException('Could not open CSV file');
         }
 
-        $imported    = 0;
-        $skipped     = 0;
-        $errors      = [];
+        $imported                = 0;
+        $skippedDuplicates       = 0;
+        $skippedReversedInternal = 0;
+        $skippedInvalidData      = 0;
+        $errors                  = [];
+        $this->logger->info('Starting CSV import', ['source' => $csvSource]);
+
         $lineNum     = 0;
         $headerFound = false;
 
@@ -137,25 +147,79 @@ class CsvImportService
                     continue;
                 }
 
-                // Skip empty or too-short rows
+                    // Skip empty or too-short rows (invalid data)
                 if (count($row) < self::COL_REFERENCE + 1) {
+                    $skippedInvalidData++;
+                    $this->logger->warning('Skipped invalid row: too few columns', [
+                        'source'  => $csvSource,
+                        'line'    => $lineNum,
+                        'columns' => count($row),
+                        'required' => self::COL_REFERENCE + 1,
+                        'reason'  => 'insufficient_columns',
+                    ]);
                     continue;
                 }
 
-                $ownAccount = trim($row[self::COL_OWN_ACCOUNT]);
+                    $ownAccount = trim($row[self::COL_OWN_ACCOUNT]);
                 if ($ownAccount === '') {
+                    $skippedInvalidData++;
+                    $this->logger->warning('Skipped invalid row: missing own account number', [
+                        'source' => $csvSource,
+                        'line'   => $lineNum,
+                        'reason' => 'missing_own_account',
+                    ]);
                     continue;
                 }
 
                 try {
                     $result = $this->processBelfiusRow($row, $csvSource);
-                    if ($result) {
-                        $imported++;
-                    } else {
-                        $skipped++;
+
+                    switch ($result) {
+                        case 'imported':
+                            $imported++;
+                            break;
+                        case 'duplicate':
+                            $skippedDuplicates++;
+                            $this->logger->warning('Skipped duplicate transfer', [
+                                'source'        => $csvSource,
+                                'line'          => $lineNum,
+                                'transactionId' => trim($row[self::COL_TRANSACTION]),
+                                'date'          => trim($row[self::COL_DATE]),
+                                'amount'        => trim($row[self::COL_AMOUNT]),
+                                'fromAccount'   => trim($row[self::COL_COUNTERPARTY]),
+                                'reference'     => trim($row[self::COL_REFERENCE]),
+                                'reason'        => 'duplicate_transfer',
+                            ]);
+                            break;
+                        case 'reversed_internal':
+                            $skippedReversedInternal++;
+                            $this->logger->info('Cancelled reversed internal transfer pair', [
+                                'source' => $csvSource,
+                                'line'   => $lineNum,
+                                'date'   => trim($row[self::COL_DATE]),
+                                'amount' => trim($row[self::COL_AMOUNT]),
+                                'reason' => 'reversed_internal_transfer',
+                            ]);
+                            break;
                     }
                 } catch (Throwable $e) {
-                    $errors[] = sprintf('Line %d: %s', $lineNum, $e->getMessage());
+                    $skippedInvalidData++;
+                    $message  = sprintf('Line %d: %s', $lineNum, $e->getMessage());
+                    $errors[] = $message;
+                    $this->logger->error('Failed to import CSV row', [
+                        'source'    => $csvSource,
+                        'line'      => $lineNum,
+                        'error'     => $e->getMessage(),
+                        'exception' => $e,
+                        'reason'    => 'processing_error',
+                        'rowData'   => [
+                            'transactionId' => trim($row[self::COL_TRANSACTION]),
+                            'date'          => trim($row[self::COL_DATE]),
+                            'amount'        => trim($row[self::COL_AMOUNT]),
+                            'counterparty'  => trim($row[self::COL_COUNTERPARTY]),
+                            'reference'     => trim($row[self::COL_REFERENCE]),
+                        ],
+                    ]);
                 }
             }
         } finally {
@@ -163,21 +227,49 @@ class CsvImportService
         }
 
         if (! $headerFound) {
+            $this->logger->error('CSV import failed: header row not found', [
+                'source' => $csvSource,
+                'reason' => 'missing_header',
+                'expectedMarker' => self::BELFIUS_HEADER_MARKER,
+            ]);
+
             throw new RuntimeException(
                 'Could not find the Belfius CSV header row. '
                 . 'Please export the file from Belfius and upload it without modifications.',
             );
         }
 
+        $this->logger->info('CSV import finished', [
+            'source'                  => $csvSource,
+            'imported'                => $imported,
+            'skippedDuplicates'       => $skippedDuplicates,
+            'skippedReversedInternal' => $skippedReversedInternal,
+            'skippedInvalidData'      => $skippedInvalidData,
+            'errors'                  => count($errors),
+        ]);
+
         return [
-            'imported' => $imported,
-            'skipped'  => $skipped,
-            'errors'   => $errors,
+            'imported'               => $imported,
+            'skippedDuplicates'      => $skippedDuplicates,
+            'skippedReversedInternal' => $skippedReversedInternal,
+            'skippedInvalidData'     => $skippedInvalidData,
+            'errors'                 => $errors,
         ];
     }
 
-    /** @param array<int, string> $row */
-    private function processBelfiusRow(array $row, string $csvSource): bool
+    /**
+     * Process a single Belfius CSV data row.
+     *
+     * Returns one of:
+     *   'imported'          – the transfer was persisted
+     *   'duplicate'         – a transfer with the same transaction ID / fingerprint already exists
+     *   'reversed_internal' – both accounts are internal and the reversed transfer was cancelled out
+     *
+     * @param array<int, string> $row
+     *
+     * @return 'imported'|'duplicate'|'reversed_internal'
+     */
+    private function processBelfiusRow(array $row, string $csvSource): string
     {
         $ownAccountRaw = trim($row[self::COL_OWN_ACCOUNT]);
         $dateStr       = trim($row[self::COL_DATE]);
@@ -246,6 +338,7 @@ class CsvImportService
             (string) $fromAccountNo,
             (string) $toAccountNo,
             $reference,
+            $transactionId,
         );
         $transfer->setFingerprint($fingerprint);
 
@@ -261,7 +354,7 @@ class CsvImportService
                 $date,
             )
         ) {
-            return false;
+            return 'reversed_internal';
         }
 
         $saved = $this->transferService->saveTransfer($transfer);
@@ -279,7 +372,7 @@ class CsvImportService
             }
         }
 
-        return $saved;
+        return $saved ? 'imported' : 'duplicate';
     }
 
     /**
@@ -346,14 +439,16 @@ class CsvImportService
         string $fromAccount,
         string $toAccount,
         string $reference,
+        string $transactionId,
     ): string {
         $data = sprintf(
-            '%s|%s|%s|%s|%s',
+            '%s|%s|%s|%s|%s|%s',
             $date->format('Y-m-d'),
             $amount,
             $fromAccount,
             $toAccount,
             $reference,
+            $transactionId,
         );
 
         return hash('sha256', $data);

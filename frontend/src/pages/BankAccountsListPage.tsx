@@ -20,6 +20,7 @@ const BankAccountsListPage: React.FC = () => {
     const [view, setView] = useState<PageView>('list');
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
+    const [search, setSearch] = useState('');
 
     // Add form state
     const [addName, setAddName] = useState('');
@@ -92,6 +93,13 @@ const BankAccountsListPage: React.FC = () => {
             setAddSubmitting(false);
         }
     };
+
+    // ── Derived filtered list ──────────────────────────────────────────────
+    const filteredAccounts = search.trim() === ''
+        ? accounts
+        : accounts.filter((a) =>
+            (a.accountName ?? '').toLowerCase().includes(search.trim().toLowerCase()),
+          );
 
     // ── Detail view ────────────────────────────────────────────────────────────
     if (view === 'detail' && selectedId) {
@@ -211,6 +219,31 @@ const BankAccountsListPage: React.FC = () => {
                         </button>
                     </div>
 
+                    {/* ── Action bar ────────────────────────────────────────── */}
+                    <div className="px-6 py-3 border-b border-gray-200 bg-gray-50 flex items-center gap-3">
+                        <div className="relative flex-1 max-w-sm">
+                            <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
+                                </svg>
+                            </span>
+                            <input
+                                type="text"
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                                placeholder="Search by account name…"
+                                className="w-full pl-9 pr-3 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white"
+                                aria-label="Search bank accounts"
+                                data-testid="bank-account-search-input"
+                            />
+                        </div>
+                        {search && (
+                            <span className="text-xs text-gray-500">
+                                {filteredAccounts.length} of {accounts.length} account{accounts.length !== 1 ? 's' : ''}
+                            </span>
+                        )}
+                    </div>
+
                     {successMessage && (
                         <div className="mx-6 mt-4 bg-green-50 border border-green-200 rounded p-3 text-green-800 text-sm" role="status">
                             {successMessage}
@@ -231,6 +264,10 @@ const BankAccountsListPage: React.FC = () => {
                                     Add your first account
                                 </button>
                             </div>
+                        ) : filteredAccounts.length === 0 ? (
+                            <div className="text-center py-12">
+                                <p className="text-gray-500 text-sm">No accounts match &ldquo;{search}&rdquo;.</p>
+                            </div>
                         ) : (
                             <div className="overflow-x-auto">
                                 <table
@@ -239,34 +276,14 @@ const BankAccountsListPage: React.FC = () => {
                                 >
                                     <thead className="bg-gray-50">
                                         <tr>
-                                            <th
-                                                scope="col"
-                                                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                                            >
-                                                Account Name
-                                            </th>
-                                            <th
-                                                scope="col"
-                                                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                                            >
-                                                Account Number
-                                            </th>
-                                            <th
-                                                scope="col"
-                                                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                                            >
-                                                Status
-                                            </th>
-                                            <th
-                                                scope="col"
-                                                className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
-                                            >
-                                                Balance
-                                            </th>
+                                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Account Name</th>
+                                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Account Number</th>
+                                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                            <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Balance</th>
                                         </tr>
                                     </thead>
                                     <tbody className="bg-white divide-y divide-gray-200">
-                                        {accounts.map((account) => (
+                                        {filteredAccounts.map((account) => (
                                             <tr
                                                 key={account.id}
                                                 className={`hover:bg-blue-50 cursor-pointer transition-colors duration-100 ${account.isInternal ? 'bg-blue-50/40' : ''}`}
@@ -286,28 +303,16 @@ const BankAccountsListPage: React.FC = () => {
                                                     <div className="flex items-center gap-2">
                                                         {account.accountName ?? '—'}
                                                         {account.isInternal && (
-                                                            <span
-                                                                title="Internal account"
-                                                                className="text-green-600 font-bold"
-                                                                data-testid="internal-indicator"
-                                                            >
-                                                                ✓
-                                                            </span>
+                                                            <span title="Internal account" className="text-green-600 font-bold" data-testid="internal-indicator">✓</span>
                                                         )}
                                                     </div>
                                                 </td>
-                                                <td className="px-6 py-4 text-sm text-gray-600 font-mono">
-                                                    {account.accountNumber ?? '—'}
-                                                </td>
+                                                <td className="px-6 py-4 text-sm text-gray-600 font-mono">{account.accountNumber ?? '—'}</td>
                                                 <td className="px-6 py-4 text-sm text-gray-600">
                                                     {account.isInternal ? (
-                                                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
-                                                            Yes ✓
-                                                        </span>
+                                                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">Yes ✓</span>
                                                     ) : (
-                                                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600">
-                                                            No
-                                                        </span>
+                                                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600">No</span>
                                                     )}
                                                 </td>
                                                 <td className="px-6 py-4 text-sm text-right">

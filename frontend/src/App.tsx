@@ -8,6 +8,7 @@ import LabelDetailPage from './pages/LabelDetailPage';
 import TransferDetailPage from './pages/TransferDetailPage';
 import TransferListPage from './pages/TransferListPage';
 import GroupByPage from './pages/GroupByPage';
+import SettingsPage from './pages/SettingsPage';
 import Sidebar from './components/Sidebar';
 import TopBar from './components/TopBar';
 import { useState, useMemo } from 'react';
@@ -21,7 +22,7 @@ import {
     useParams,
 } from 'react-router-dom';
 
-type Page = 'transfers' | 'bank-accounts' | 'labels' | 'group-by';
+type Page = 'transfers' | 'bank-accounts' | 'labels' | 'group-by' | 'settings';
 
 // ── Icons (inline SVG) ───────────────────────────────────────────────────────
 const TransfersIcon = () => (
@@ -48,12 +49,20 @@ const GroupByIcon = () => (
     </svg>
 );
 
+const SettingsIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true" className="w-5 h-5">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+    </svg>
+);
+
 // ── Page titles map ──────────────────────────────────────────────────────────
 const PAGE_TITLES: Record<Page, string> = {
     transfers: 'Transfers',
     'bank-accounts': 'Bank Accounts',
     labels: 'Labels',
     'group-by': 'Group By & Analysis',
+    settings: 'Settings',
 };
 
 // ── Route wrapper: reads :id param and renders BankAccountDetailPage ─────────
@@ -83,6 +92,7 @@ function AppContent() {
         if (location.pathname.startsWith('/accounts')) return 'bank-accounts';
         if (location.pathname.startsWith('/labels')) return 'labels';
         if (location.pathname.startsWith('/group-by')) return 'group-by';
+        if (location.pathname.startsWith('/settings')) return 'settings';
         return 'transfers';
     }, [location.pathname]);
 
@@ -108,6 +118,10 @@ function AppContent() {
         { id: 'group-by' as Page, label: 'Group By', icon: <GroupByIcon /> },
     ];
 
+    const footerPages = [
+        { id: 'settings' as Page, label: 'Settings', icon: <SettingsIcon /> },
+    ];
+
     const sidebarWidth = sidebarExpanded ? 'ml-56' : 'ml-16';
 
     return (
@@ -117,12 +131,14 @@ function AppContent() {
                 expanded={sidebarExpanded}
                 onToggle={() => setSidebarExpanded((prev) => !prev)}
                 pages={navPages}
+                footerPages={footerPages}
                 currentPage={currentPage}
                 onNavigate={(id: string) => {
                     if (id === 'transfers') navigate('/transfers');
                     else if (id === 'bank-accounts') navigate('/accounts');
                     else if (id === 'labels') navigate('/labels');
                     else if (id === 'group-by') navigate('/group-by');
+                    else if (id === 'settings') navigate('/settings');
                     // Auto-close sidebar on mobile after navigation
                     if (window.innerWidth < 1024) setSidebarExpanded(false);
                 }}
@@ -152,6 +168,7 @@ function AppContent() {
                         <Route path="/labels" element={<LabelsListPage />} />
                         <Route path="/labels/:id" element={<LabelDetailPage />} />
                         <Route path="/group-by" element={<GroupByPage />} />
+                        <Route path="/settings" element={<SettingsPage />} />
                         <Route path="*" element={<Navigate to="/transfers" replace />} />
                     </Routes>
                 </main>

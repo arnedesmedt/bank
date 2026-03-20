@@ -82,8 +82,10 @@ class TransfersByLabelProvider implements ProviderInterface
             $dateFrom,
             $dateTo,
             [$id],
+            [],
             null,
             10000,
+            0,
         );
 
         return array_map(

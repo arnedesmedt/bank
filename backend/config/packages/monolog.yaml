@@ -1,0 +1,29 @@
+monolog:
+    handlers:
+        # stdout handler for Docker logs (only essential logs)
+        docker:
+            type: stream
+            path: "php://stdout"
+            level: info  # Only show INFO and above (skip DEBUG)
+            include_stacktraces: true
+            formatter: monolog.formatter.json
+            channels: ["!event", "!doctrine", "!security"]
+            
+        # Keep file logging with all channels and debug level
+        main:
+            type: stream
+            path: "%kernel.logs_dir%/%kernel.environment%.log"
+            level: debug
+            include_stacktraces: true
+            
+        # Separate error log for production
+        error:
+            type: stream
+            path: "%kernel.logs_dir%/error.log"
+            level: error
+            include_stacktraces: true
+            
+        console:
+            type: console
+            process_psr_3_messages: false
+            channels: ["!event", "!doctrine"]

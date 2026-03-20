@@ -30,6 +30,7 @@ function LabelManager() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
 
   // Create form state
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -143,6 +144,11 @@ function LabelManager() {
     const account = bankAccounts.find((ba) => ba.id === id);
     return account != null ? `${account.accountName} (${account.accountNumber})` : id;
   };
+
+  // ── Derived filtered list ──────────────────────────────────────────────
+  const filteredLabels = search.trim() === ''
+    ? labels
+    : labels.filter((l) => l.name.toLowerCase().includes(search.trim().toLowerCase()));
 
   if (loading) {
     return (
@@ -288,6 +294,31 @@ function LabelManager() {
           </button>
         </div>
 
+        {/* ── Action bar ──────────────────────────────────────────────── */}
+        <div className="px-6 py-3 border-b border-gray-200 bg-gray-50 flex items-center gap-3">
+          <div className="relative flex-1 max-w-sm">
+            <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
+              </svg>
+            </span>
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search by label name…"
+              className="w-full pl-9 pr-3 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white"
+              aria-label="Search labels"
+              data-testid="label-search-input"
+            />
+          </div>
+          {search && (
+            <span className="text-xs text-gray-500">
+              {filteredLabels.length} of {labels.length} label{labels.length !== 1 ? 's' : ''}
+            </span>
+          )}
+        </div>
+
         {successMessage != null && (
           <div className="mx-6 mt-4 bg-green-50 border border-green-200 rounded p-3 text-green-800 text-sm" role="status" data-testid="success-message">
             {successMessage}
@@ -307,6 +338,10 @@ function LabelManager() {
                 Create first label
               </button>
             </div>
+          ) : filteredLabels.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-gray-500 text-sm">No labels match &ldquo;{search}&rdquo;.</p>
+            </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200" aria-label="Labels list">
@@ -319,7 +354,7 @@ function LabelManager() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {labels.map((label) => (
+                  {filteredLabels.map((label) => (
                     <tr
                       key={label.id}
                       className="hover:bg-blue-50 cursor-pointer transition-colors duration-100"

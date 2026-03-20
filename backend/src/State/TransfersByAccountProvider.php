@@ -85,8 +85,10 @@ class TransfersByAccountProvider implements ProviderInterface
             $dateFrom,
             $dateTo,
             $labelIds,
-            $id,
+            [$id],
+            null,
             10000,
+            0,
         );
 
         return array_map(

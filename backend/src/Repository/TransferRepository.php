@@ -16,6 +16,7 @@ use function array_keys;
 use function array_map;
 use function assert;
 use function implode;
+use function is_int;
 use function sprintf;
 
 /** @extends ServiceEntityRepository<Transfer> */
@@ -26,14 +27,47 @@ class TransferRepository extends ServiceEntityRepository
         parent::__construct($registry, Transfer::class);
     }
 
-    public function findByTransactionId(string $transactionId): Transfer|null
+    /**
+     * Find a transfer by its transaction ID scoped to a specific year and own (internal) account.
+     *
+     * Belfius resets transaction IDs at the start of each year, and they are only
+     * unique within a single account export — so (transactionId, year, ownAccount)
+     * is the correct composite key for duplicate detection.
+     */
+    public function findByTransactionId(string $transactionId, int $year, BankAccount $bankAccount): Transfer|null
     {
-        return $this->findOneBy(['transactionId' => $transactionId]);
+        $result = $this->createQueryBuilder('t')
+            ->andWhere('t.transactionId = :transactionId')
+            ->andWhere('t.date >= :yearStart AND t.date < :yearEnd')
+            ->andWhere('t.fromAccount = :ownAccount OR t.toAccount = :ownAccount')
+            ->setParameter('transactionId', $transactionId)
+            ->setParameter('yearStart', new DateTimeImmutable($year . '-01-01'))
+            ->setParameter('yearEnd', new DateTimeImmutable(($year + 1) . '-01-01'))
+            ->setParameter('ownAccount', $bankAccount)
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult();
+        assert($result instanceof Transfer || $result === null);
+
+        return $result;
     }
 
     public function findByFingerprint(string $fingerprint): Transfer|null
     {
         return $this->findOneBy(['fingerprint' => $fingerprint]);
+    }
+
+    /** Remove every transfer (and their label links via cascade) from the database. */
+    public function deleteAll(): int
+    {
+        $result = $this->createQueryBuilder('t')
+            ->delete()
+            ->getQuery()
+            ->execute();
+
+        assert(is_int($result));
+
+        return $result;
     }
 
     /** @return array<Transfer> */
@@ -153,6 +187,7 @@ class TransferRepository extends ServiceEntityRepository
      * Find transfers with optional filters: search, dateFrom, dateTo, labelIds, accountId.
      *
      * @param array<string> $labelIds
+     * @param array<string> $accountIds
      *
      * @return array<Transfer>
      */
@@ -161,11 +196,12 @@ class TransferRepository extends ServiceEntityRepository
         DateTimeImmutable|null $dateFrom = null,
         DateTimeImmutable|null $dateTo = null,
         array $labelIds = [],
+        array $accountIds = [],
         string|null $accountId = null,
         int $limit = 30,
         int $offset = 0,
     ): array {
-        $queryBuilder = $this->buildFilterQuery($search, $dateFrom, $dateTo, $labelIds, $accountId);
+        $queryBuilder = $this->buildFilterQuery($search, $dateFrom, $dateTo, $labelIds, $accountIds, $accountId);
         $queryBuilder->orderBy('t.date', 'DESC')
             ->setMaxResults($limit)
             ->setFirstResult($offset);
@@ -180,15 +216,17 @@ class TransferRepository extends ServiceEntityRepository
      * Count transfers matching filters (for total/summary display).
      *
      * @param array<string> $labelIds
+     * @param array<string> $accountIds
      */
     public function countWithFilters(
         string|null $search = null,
         DateTimeImmutable|null $dateFrom = null,
         DateTimeImmutable|null $dateTo = null,
         array $labelIds = [],
+        array $accountIds = [],
         string|null $accountId = null,
     ): int {
-        $queryBuilder = $this->buildFilterQuery($search, $dateFrom, $dateTo, $labelIds, $accountId);
+        $queryBuilder = $this->buildFilterQuery($search, $dateFrom, $dateTo, $labelIds, $accountIds, $accountId);
         $queryBuilder->select('COUNT(DISTINCT t.uuid)');
 
         return (int) $queryBuilder->getQuery()->getSingleScalarResult();
@@ -199,6 +237,7 @@ class TransferRepository extends ServiceEntityRepository
      * Returns ['totalIn' => string, 'totalOut' => string, 'net' => string].
      *
      * @param array<string> $labelIds
+     * @param array<string> $accountIds
      *
      * @return array{totalIn: string, totalOut: string, net: string}
      */
@@ -207,9 +246,10 @@ class TransferRepository extends ServiceEntityRepository
         DateTimeImmutable|null $dateFrom = null,
         DateTimeImmutable|null $dateTo = null,
         array $labelIds = [],
+        array $accountIds = [],
         string|null $accountId = null,
     ): array {
-        $queryBuilder = $this->buildFilterQuery($search, $dateFrom, $dateTo, $labelIds, $accountId);
+        $queryBuilder = $this->buildFilterQuery($search, $dateFrom, $dateTo, $labelIds, $accountIds, $accountId);
         $queryBuilder->select(
             'SUM(CASE WHEN CAST(t.amount AS decimal) > 0 THEN CAST(t.amount AS decimal) ELSE 0 END) AS totalIn',
             'SUM(CASE WHEN CAST(t.amount AS decimal) < 0 THEN CAST(t.amount AS decimal) ELSE 0 END) AS totalOut',
@@ -230,13 +270,15 @@ class TransferRepository extends ServiceEntityRepository
      * Build the base query builder with all filters applied.
      *
      * @param array<string> $labelIds
+     * @param array<string> $accountIds Filter to transfers involving any of these account IDs
      */
     private function buildFilterQuery(
         string|null $search,
         DateTimeImmutable|null $dateFrom,
         DateTimeImmutable|null $dateTo,
         array $labelIds,
-        string|null $accountId,
+        array $accountIds = [],
+        string|null $accountId = null,
     ): QueryBuilder {
         $queryBuilder = $this->createQueryBuilder('t');
 
@@ -260,6 +302,11 @@ class TransferRepository extends ServiceEntityRepository
                 ->join('ltl.label', 'lbl')
                 ->andWhere('lbl.uuid IN (:labelIds)')
                 ->setParameter('labelIds', $labelIds);
+        }
+
+        if ($accountIds !== []) {
+            $queryBuilder->andWhere('t.fromAccount IN (:accountIds) OR t.toAccount IN (:accountIds)')
+                ->setParameter('accountIds', $accountIds);
         }
 
         if ($accountId !== null && $accountId !== '') {

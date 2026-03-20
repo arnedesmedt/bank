@@ -27,13 +27,11 @@ class ExceptionListener
     {
         $throwable = $exceptionEvent->getThrowable();
 
-        // Log the exception
-        $this->logger->error('Exception occurred', [
-            'exception' => $throwable::class,
-            'message' => $throwable->getMessage(),
-            'file' => $throwable->getFile(),
-            'line' => $throwable->getLine(),
-        ]);
+        // Log the exception with full object for stack trace
+        $this->logger->error(
+            'Exception occurred',
+            ['exception' => $throwable],
+        );
 
         // Prepare response data
         $statusCode = $throwable instanceof HttpExceptionInterface

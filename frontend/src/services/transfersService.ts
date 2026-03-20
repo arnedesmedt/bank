@@ -34,7 +34,7 @@ export interface TransferFilters {
     dateTo?: string;
     labelIds?: string[];
     accountId?: string;
-    page?: number;
+    accountIds?: string[];
 }
 
 export interface GroupByResult {
@@ -70,6 +70,9 @@ export async function fetchTransfers(
     if (filters.dateTo) params.set('dateTo', filters.dateTo);
     if (filters.accountId) params.set('accountId', filters.accountId);
     if (filters.labelIds && filters.labelIds.length > 0) {
+    if (filters.accountIds && filters.accountIds.length > 0) {
+        filters.accountIds.forEach((id) => params.append('accountIds[]', id));
+    }
         filters.labelIds.forEach((id) => params.append('labelIds[]', id));
     }
 
@@ -105,8 +108,7 @@ export async function bulkAction(
 /**
  * Fetch group-by aggregation results.
  */
-export async function fetchGroupBy(
-    params: {
+export async function fetchGroupBy(    params: {
         groupBy?: 'period' | 'label' | 'label_and_period';
         period?: 'month' | 'quarter' | 'year';
         dateFrom?: string;
@@ -127,3 +129,23 @@ export async function fetchGroupBy(
     return apiGet<GroupByResult[]>(`/api/group-by?${q.toString()}`, accessToken);
 }
 
+/**
+ * Delete every transfer in the database (irreversible).
+ * Returns the count of deleted records.
+ */
+export async function deleteAllTransfers(accessToken: string): Promise<{ deleted: number }> {
+    const response = await fetch(`${API_URL}/api/settings/transfers`, {
+        method: 'DELETE',
+        headers: {
+            Authorization: `Bearer ${accessToken}`,
+            Accept: 'application/json',
+        },
+    });
+
+    if (!response.ok) {
+        const err = (await response.json().catch(() => ({}))) as { detail?: string };
+        throw new Error(err.detail ?? `Failed to delete transfers: ${response.status}`);
+    }
+
+    return response.json() as Promise<{ deleted: number }>;
+}

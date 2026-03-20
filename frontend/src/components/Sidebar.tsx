@@ -10,6 +10,8 @@ interface SidebarProps {
     expanded: boolean;
     onToggle: () => void;
     pages: SidebarPage[];
+    /** Pages pinned to the bottom of the sidebar (e.g. Settings) */
+    footerPages?: SidebarPage[];
     currentPage: string;
     onNavigate: (id: string) => void;
 }
@@ -19,7 +21,7 @@ interface SidebarProps {
  * keyboard navigation, ARIA roles, and hamburger toggle.
  * Does not scroll with main content (position: fixed).
  */
-const Sidebar: React.FC<SidebarProps> = ({ expanded, onToggle, pages, currentPage, onNavigate }) => {
+const Sidebar: React.FC<SidebarProps> = ({ expanded, onToggle, pages, footerPages = [], currentPage, onNavigate }) => {
     const firstNavItemRef = useRef<HTMLButtonElement | null>(null);
 
     // Trap focus within sidebar when it's expanded on mobile (optional enhancement)
@@ -117,6 +119,47 @@ const Sidebar: React.FC<SidebarProps> = ({ expanded, onToggle, pages, currentPag
                         );
                     })}
                 </ul>
+
+                {/* Footer / bottom-pinned items (e.g. Settings) */}
+                {footerPages.length > 0 && (
+                    <ul
+                        role="list"
+                        className="py-3 gap-1 px-2 border-t border-gray-700 flex flex-col"
+                    >
+                        {footerPages.map((page) => {
+                            const isActive = currentPage === page.id;
+                            return (
+                                <li key={page.id} role="listitem">
+                                    <button
+                                        onClick={() => onNavigate(page.id)}
+                                        aria-label={page.label}
+                                        aria-current={isActive ? 'page' : undefined}
+                                        title={!expanded ? page.label : undefined}
+                                        className={`
+                                            w-full flex items-center gap-3 rounded-lg px-3 py-2.5
+                                            transition-colors duration-150 text-left
+                                            focus:outline-none focus:ring-2 focus:ring-blue-400
+                                            ${isActive
+                                                ? 'bg-blue-600 text-white'
+                                                : 'text-gray-300 hover:bg-gray-700 hover:text-white'
+                                            }
+                                        `}
+                                        data-testid={`nav-${page.id}`}
+                                    >
+                                        <span className="flex-shrink-0 w-5 h-5" aria-hidden="true">
+                                            {page.icon}
+                                        </span>
+                                        {expanded && (
+                                            <span className="text-sm font-medium truncate">
+                                                {page.label}
+                                            </span>
+                                        )}
+                                    </button>
+                                </li>
+                            );
+                        })}
+                    </ul>
+                )}
             </nav>
         </>
     );

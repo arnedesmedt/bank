@@ -70,6 +70,7 @@ export function TransferList({
                         dateFrom: filters?.dateFrom,
                         dateTo: filters?.dateTo,
                         labelIds: filters?.labelIds,
+                        accountIds: filters?.accountIds,
                     },
                     accessToken,
                 );
@@ -96,7 +97,7 @@ export function TransferList({
         setHasMore(true);
         void fetchPage(1, true);
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [externalRefreshKey, accessToken, filters?.search, filters?.dateFrom, filters?.dateTo, JSON.stringify(filters?.labelIds)]);
+    }, [externalRefreshKey, accessToken, filters?.search, filters?.dateFrom, filters?.dateTo, JSON.stringify(filters?.labelIds), JSON.stringify(filters?.accountIds)]);
     // Load next pages when page increments
     useEffect(() => {
         if (page === 1) return;
@@ -362,7 +363,7 @@ export function TransferList({
                 </div>
                 {transfers.length === 0 ? (
                     <div className="p-6 text-center text-gray-500">
-                        {filters?.search || filters?.dateFrom || filters?.dateTo || (filters?.labelIds?.length ?? 0) > 0
+                        {filters?.search || filters?.dateFrom || filters?.dateTo || (filters?.labelIds?.length ?? 0) > 0 || (filters?.accountIds?.length ?? 0) > 0
                             ? 'No transfers match the current filters.'
                             : 'No transfers found. Use the Import button to import a CSV file.'}
                     </div>

@@ -16,7 +16,7 @@ import Amount from '../components/Amount';
 import { ActionBar } from '../components/ActionBar';
 import type { TransferFilters } from '../components/ActionBar';
 
-const EMPTY_FILTERS: TransferFilters = { search: '', dateFrom: '', dateTo: '', labelIds: [] };
+const EMPTY_FILTERS: TransferFilters = { search: '', dateFrom: '', dateTo: '', labelIds: [], accountIds: [] };
 
 /**
  * T018/T021 [US2]: Label detail page.

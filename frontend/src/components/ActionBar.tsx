@@ -9,9 +9,15 @@ export interface TransferFilters {
     dateFrom: string;
     dateTo: string;
     labelIds: string[];
+    accountIds: string[];
 }
 
 export interface LabelOption {
+    id: string;
+    name: string;
+}
+
+export interface AccountOption {
     id: string;
     name: string;
 }
@@ -32,6 +38,7 @@ interface ActionBarProps {
     filters?: TransferFilters;
     onFiltersChange?: (filters: TransferFilters) => void;
     availableLabels?: LabelOption[];
+    availableAccounts?: AccountOption[];
 
     // ── Bulk action props ────────────────────────────────────────────────────
     /** Number of currently selected transfers */
@@ -60,6 +67,7 @@ export function ActionBar({
     filters,
     onFiltersChange,
     availableLabels = [],
+    availableAccounts = [],
     selectedCount = 0,
     onBulkAction,
 }: ActionBarProps) {
@@ -110,6 +118,32 @@ export function ActionBar({
                 ? filters.labelIds.filter((id) => id !== labelId)
                 : [...filters.labelIds, labelId];
             onFiltersChange({ ...filters, labelIds: newIds });
+        },
+        [filters, onFiltersChange],
+    );
+
+    // ── Account dropdown ──────────────────────────────────────────────────────
+    const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+    const accountMenuRef = useRef<HTMLDivElement | null>(null);
+
+    useEffect(() => {
+        const handler = (e: MouseEvent) => {
+            if (accountMenuRef.current && !accountMenuRef.current.contains(e.target as Node)) {
+                setAccountMenuOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, []);
+
+    const toggleAccount = useCallback(
+        (accountId: string) => {
+            if (!filters || !onFiltersChange) return;
+            const current = filters.accountIds ?? [];
+            const newIds = current.includes(accountId)
+                ? current.filter((id) => id !== accountId)
+                : [...current, accountId];
+            onFiltersChange({ ...filters, accountIds: newIds });
         },
         [filters, onFiltersChange],
     );
@@ -181,6 +215,9 @@ export function ActionBar({
                             aria-label="Date from"
                             calendarStartDay={1}
                             showWeekNumbers
+                            showYearDropdown
+                            scrollableYearDropdown
+                            dropdownMode="select"
                         />
                     </div>
                     <span className="text-gray-400 text-xs">–</span>
@@ -206,6 +243,9 @@ export function ActionBar({
                             aria-label="Date to"
                             calendarStartDay={1}
                             showWeekNumbers
+                            showYearDropdown
+                            scrollableYearDropdown
+                            dropdownMode="select"
                         />
                     </div>
 
@@ -269,13 +309,73 @@ export function ActionBar({
                         </div>
                     )}
 
+                    {/* Account filter dropdown */}
+                    {availableAccounts.length > 0 && (
+                        <div className="relative" ref={accountMenuRef}>
+                            <button
+                                type="button"
+                                onClick={() => setAccountMenuOpen((o) => !o)}
+                                className="flex items-center gap-1.5 px-3 py-1.5 text-sm border border-gray-300 rounded-md bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                                aria-expanded={accountMenuOpen}
+                                aria-haspopup="listbox"
+                            >
+                                <svg className="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 6l9-4 9 4M3 6v14a1 1 0 001 1h5v-5h4v5h5a1 1 0 001-1V6M3 6h18" />
+                                </svg>
+                                Account
+                                {(filters.accountIds ?? []).length > 0 && (
+                                    <span className="inline-flex items-center justify-center w-4 h-4 text-xs rounded-full bg-blue-600 text-white">
+                                        {(filters.accountIds ?? []).length}
+                                    </span>
+                                )}
+                            </button>
+
+                            {accountMenuOpen && (
+                                <div
+                                    className="absolute top-full left-0 mt-1 w-64 bg-white border border-gray-200 rounded-md shadow-lg z-30 max-h-64 overflow-y-auto"
+                                    role="listbox"
+                                    aria-label="Filter by account"
+                                    aria-multiselectable="true"
+                                >
+                                    {availableAccounts.map((account) => (
+                                        <button
+                                            key={account.id}
+                                            type="button"
+                                            role="option"
+                                            aria-selected={(filters.accountIds ?? []).includes(account.id)}
+                                            onClick={() => toggleAccount(account.id)}
+                                            className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center gap-2 ${
+                                                (filters.accountIds ?? []).includes(account.id) ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
+                                            }`}
+                                        >
+                                            <span
+                                                className={`w-4 h-4 border rounded flex-shrink-0 flex items-center justify-center ${
+                                                    (filters.accountIds ?? []).includes(account.id)
+                                                        ? 'bg-blue-600 border-blue-600'
+                                                        : 'border-gray-300'
+                                                }`}
+                                            >
+                                                {(filters.accountIds ?? []).includes(account.id) && (
+                                                    <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                                                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                                    </svg>
+                                                )}
+                                            </span>
+                                            {account.name}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
+
                     {/* Clear filters */}
-                    {(filters.search !== '' || filters.dateFrom !== '' || filters.dateTo !== '' || filters.labelIds.length > 0) && (
+                    {(filters.search !== '' || filters.dateFrom !== '' || filters.dateTo !== '' || filters.labelIds.length > 0 || (filters.accountIds ?? []).length > 0) && (
                         <button
                             type="button"
                             onClick={() => {
                                 setLocalSearch('');
-                                onFiltersChange!({ search: '', dateFrom: '', dateTo: '', labelIds: [] });
+                                onFiltersChange!({ search: '', dateFrom: '', dateTo: '', labelIds: [], accountIds: [] });
                             }}
                             className="flex items-center gap-1 px-3 py-1.5 text-sm text-gray-600 bg-gray-100 border border-gray-300 rounded-md hover:bg-red-50 hover:text-red-600 hover:border-red-300 focus:outline-none focus:ring-2 focus:ring-red-300 transition-colors"
                             aria-label="Clear all filters"
@@ -401,4 +501,3 @@ export function ActionBar({
         </div>
     );
 }
-

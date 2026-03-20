@@ -69,11 +69,16 @@ class TransferImportProcessor implements ProcessorInterface
                 $fileName,
             );
 
-            $transferImportResult           = new TransferImportResult();
-            $transferImportResult->message  = 'Import completed';
-            $transferImportResult->imported = $result['imported'];
-            $transferImportResult->skipped  = $result['skipped'];
-            $transferImportResult->errors   = $result['errors'];
+            $transferImportResult                          = new TransferImportResult();
+            $transferImportResult->message                 = 'Import completed';
+            $transferImportResult->imported                = $result['imported'];
+            $transferImportResult->skippedDuplicates       = $result['skippedDuplicates'];
+            $transferImportResult->skippedReversedInternal = $result['skippedReversedInternal'];
+            $transferImportResult->skippedInvalidData      = $result['skippedInvalidData'];
+            $transferImportResult->skipped                 = $result['skippedDuplicates']
+                + $result['skippedReversedInternal']
+                + $result['skippedInvalidData'];
+            $transferImportResult->errors                  = $result['errors'];
 
             return $transferImportResult;
         } catch (Throwable $throwable) {

@@ -3,7 +3,11 @@ import { useAuth } from '../contexts/AuthContext';
 export interface ImportResult {
   message: string;
   imported: number;
+  /** Total skipped (sum of the three breakdown fields) */
   skipped: number;
+  skippedDuplicates: number;
+  skippedReversedInternal: number;
+  skippedInvalidData: number;
   errors: string[];
 }
 interface Props {
@@ -122,18 +126,26 @@ export function TransferImport({ onImportComplete, compact = false }: Props) {
       )}
       {result !== null && (
         <div className="bg-green-50 border border-green-200 rounded p-3" role="status">
-          <h3 className="text-sm font-semibold text-green-800 mb-1">Import Complete!</h3>
-          <ul className="text-sm text-green-700 space-y-0.5">
-            <li>✓ Imported: {result.imported} transfers</li>
-            <li>○ Skipped: {result.skipped} duplicates</li>
+          <h3 className="text-sm font-semibold text-green-800 mb-2">Import Complete!</h3>
+          <ul className="text-sm space-y-0.5">
+            <li className="text-green-700">✓ Imported: <strong>{result.imported}</strong> transfer{result.imported !== 1 ? 's' : ''}</li>
+            {result.skippedDuplicates > 0 && (
+              <li className="text-amber-600">○ Duplicates skipped: <strong>{result.skippedDuplicates}</strong></li>
+            )}
+            {result.skippedReversedInternal > 0 && (
+              <li className="text-amber-600">○ Reversed internal transfers cancelled: <strong>{result.skippedReversedInternal}</strong></li>
+            )}
+            {result.skippedInvalidData > 0 && (
+              <li className="text-orange-600">⚠ Invalid / incomplete rows skipped: <strong>{result.skippedInvalidData}</strong></li>
+            )}
             {result.errors.length > 0 && (
-              <li className="text-red-600">✗ Errors: {result.errors.length}</li>
+              <li className="text-red-600">✗ Errors: <strong>{result.errors.length}</strong></li>
             )}
           </ul>
           {result.errors.length > 0 && (
             <div className="mt-2">
-              <p className="text-xs font-medium text-red-800 mb-1">Errors:</p>
-              <ul className="text-xs text-red-700 list-disc list-inside">
+              <p className="text-xs font-medium text-red-800 mb-1">Error details:</p>
+              <ul className="text-xs text-red-700 list-disc list-inside space-y-0.5">
                 {result.errors.map((err, idx) => (
                   <li key={idx}>{err}</li>
                 ))}

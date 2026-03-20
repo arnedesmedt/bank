@@ -27,7 +27,7 @@ type ViewMode = 'view' | 'edit';
  * Edit mode allows changing the account name.
  * T029: Delete is intentionally disabled (bank account deletion is not allowed).
  */
-const EMPTY_FILTERS: TransferFilters = { search: '', dateFrom: '', dateTo: '', labelIds: [] };
+const EMPTY_FILTERS: TransferFilters = { search: '', dateFrom: '', dateTo: '', labelIds: [], accountIds: [] };
 
 const BankAccountDetailPage: React.FC<Props> = ({ bankAccountId, onBack }) => {
     const { accessToken } = useAuth();

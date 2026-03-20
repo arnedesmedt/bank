@@ -13,7 +13,7 @@ vi.mock('../src/contexts/AuthContext', () => ({
 const renderWithRouter = (ui: React.ReactElement) =>
     render(<MemoryRouter>{ui}</MemoryRouter>);
 
-const EMPTY_FILTERS: TransferFilters = { search: '', dateFrom: '', dateTo: '', labelIds: [] };
+const EMPTY_FILTERS: TransferFilters = { search: '', dateFrom: '', dateTo: '', labelIds: [], accountIds: [] };
 
 // ─── ActionBar filtering tests ────────────────────────────────────────────────
 

@@ -1,68 +1,54 @@
+    const handleBulkAction = (_action: BulkAction) => {
+const EMPTY_FILTERS: TransferFilters = { search: '', dateFrom: '', dateTo: '', labelIds: [] };
+/**
+import type { TransferFilters, BulkAction, AccountOption } from '../components/ActionBar';
+ * - Search, date range, label filter
+ * - CSV import button
+ * - Multi-select + bulk actions
+ */
 import React, { useEffect, useState } from 'react';
 import { fetchBankAccounts } from '../services/bankAccountsService';
 import type { BankAccount } from '../services/bankAccountsService';
-import type { Label } from '../services/labelsService';
-import type { TransferFilters, BulkAction, AccountOption } from '../components/ActionBar';
-import { useNotifications } from '../components/NotificationProvider';
-import { useAuth } from '../contexts/AuthContext';
-import { ActionBar } from '../components/ActionBar';
-import { TransferList } from '../components/TransferList';
-import { TransferImport, type ImportResult } from '../components/TransferImport';
-import { fetchLabels } from '../services/labelsService';
+const EMPTY_FILTERS: TransferFilters = { search: '', dateFrom: '', dateTo: '', labelIds: [], accountIds: [] };
 
+import type { Label } from '../services/labelsService';
+const EMPTY_FILTERS: TransferFilters = { search: '', dateFrom: '', dateTo: '', labelIds: [] };
 /**
  * TransferListPage — wraps TransferList with an ActionBar with full filter support.
  * - Search, date range, label filter
  * - CSV import button
  * - Multi-select + bulk actions
+    const [internalAccounts, setInternalAccounts] = useState<BankAccount[]>([]);
  */
-
-const EMPTY_FILTERS: TransferFilters = { 
-    search: '', 
-    dateFrom: '', 
-    dateTo: '', 
-    labelIds: [], 
-    accountIds: [] 
-};
 
 const TransferListPage: React.FC = () => {
     const { addNotification } = useNotifications();
     const { accessToken } = useAuth();
     const [showImportModal, setShowImportModal] = useState(false);
     const [refreshKey, setRefreshKey] = useState(0);
-    const [filters, setFilters] = useState<TransferFilters>(EMPTY_FILTERS);
-    const [selectedIds, setSelectedIds] = useState<string[]>([]);
-    const [internalAccounts, setInternalAccounts] = useState<BankAccount[]>([]);
-    const [labels, setLabels] = useState<Label[]>([]);
-
-    // Fetch internal accounts
-    useEffect(() => {
-        if (!accessToken) return;
         fetchBankAccounts(accessToken)
             .then((accounts) => setInternalAccounts(accounts.filter((a) => a.isInternal)))
             .catch(() => setInternalAccounts([]));
-    }, [accessToken]);
+    const [filters, setFilters] = useState<TransferFilters>(EMPTY_FILTERS);
 
-    // Fetch labels
+    const [labels, setLabels] = useState<Label[]>([]);
+    const accountOptions: AccountOption[] = internalAccounts.map((a) => ({
+        id: a.id,
+        name: a.accountName ?? a.accountNumber ?? a.id,
+    }));
+    const handleBulkAction = () => {
     useEffect(() => {
         if (!accessToken) return;
         fetchLabels(accessToken)
             .then(setLabels)
             .catch(() => setLabels([]));
     }, [accessToken]);
-
-    const accountOptions: AccountOption[] = internalAccounts.map((a) => ({
-        id: a.id,
-        name: a.accountName ?? a.accountNumber ?? a.id,
-    }));
-
     const labelOptions = labels.map((l) => ({ id: l.id, name: l.name }));
-
     const handleBulkAction = (_action: BulkAction) => {
         // Bulk action is handled inside TransferList; here we just refresh if needed
         setRefreshKey((k) => k + 1);
+                availableAccounts={accountOptions}
     };
-
     return (
         <div className="space-y-0">
             {/* Action bar with filters + import button */}
@@ -70,7 +56,6 @@ const TransferListPage: React.FC = () => {
                 filters={filters}
                 onFiltersChange={setFilters}
                 availableLabels={labelOptions}
-                availableAccounts={accountOptions}
                 selectedCount={selectedIds.length}
                 onBulkAction={handleBulkAction}
             >
@@ -93,7 +78,6 @@ const TransferListPage: React.FC = () => {
                     Import CSV
                 </button>
             </ActionBar>
-            
             {/* Transfer list */}
             <div className="mt-4 px-0">
                 <TransferList
@@ -106,7 +90,6 @@ const TransferListPage: React.FC = () => {
                     onBulkAction={handleBulkAction}
                 />
             </div>
-            
             {/* CSV import modal */}
             {showImportModal && (
                 <div
@@ -134,7 +117,7 @@ const TransferListPage: React.FC = () => {
                         <div className="p-6">
                             <TransferImport
                                 compact
-                                onImportComplete={(result: ImportResult) => {
+                                onImportComplete={(result) => {
                                     setShowImportModal(false);
                                     setRefreshKey((k) => k + 1);
 
@@ -177,5 +160,4 @@ const TransferListPage: React.FC = () => {
         </div>
     );
 };
-
 export default TransferListPage;
