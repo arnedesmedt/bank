@@ -7,72 +7,52 @@ namespace App\Service;
 use App\Entity\BankAccount;
 use App\Entity\Transfer;
 use App\Repository\BankAccountRepository;
+use App\Service\BankExtractor\BankExtractorInterface;
+use App\Service\BankExtractor\BankTransferData;
 use DateTimeImmutable;
 use InvalidArgumentException;
 use Psr\Log\LoggerInterface;
 use RuntimeException;
+use Symfony\Component\DependencyInjection\Attribute\AutowireIterator;
 use Throwable;
 
 use function array_map;
+use function array_values;
+use function assert;
 use function bcadd;
 use function bcsub;
 use function count;
 use function fclose;
-use function feof;
-use function fgetcsv;
 use function fopen;
 use function hash;
-use function in_array;
+use function implode;
 use function is_numeric;
 use function ltrim;
-use function mb_convert_encoding;
-use function preg_replace;
 use function sprintf;
-use function str_replace;
-use function strtoupper;
-use function trim;
 
 class CsvImportService
 {
-    private const array SUPPORTED_BANKS = ['belfius'];
-
-    private const string BELFIUS_DELIMITER = ';';
-
-    private const string BELFIUS_DATE_FORMAT = 'd/m/Y';
+    /** @var list<BankExtractorInterface> */
+    private readonly array $extractors;
 
     /**
-     * The first column of the Belfius data header row.
-     * Used to detect where the actual data starts (after metadata rows).
+     * In-memory bank-account cache for the duration of a single import.
+     * Keyed by BankAccount hash so we avoid a DB round-trip for every row.
+     *
+     * @var array<string, BankAccount>
      */
-    private const string BELFIUS_HEADER_MARKER = 'Rekening';
+    private array $accountCache = [];
 
-    // Column indices in the Belfius data rows (after the header row)
-    private const int COL_OWN_ACCOUNT = 0;
-
-      // Rekening
-    private const int COL_DATE = 1;
-
-      // Boekingsdatum
-    private const int COL_TRANSACTION = 3;
-
-      // Transactienummer
-    private const int COL_COUNTERPARTY = 4;
-
-      // Rekening tegenpartij
-    private const int COL_COUNTER_NAME = 5;
-
-      // Naam tegenpartij bevat
-    private const int COL_AMOUNT = 10;
-
-     // Bedrag  (e.g. "1950,00" or "-22,50")
-    private const int COL_REFERENCE = 14; // Mededelingen
-
+    /** @param iterable<BankExtractorInterface> $extractors All registered bank extractors */
     public function __construct(
         private readonly LoggerInterface $logger,
         private readonly BankAccountRepository $bankAccountRepository,
         private readonly TransferService $transferService,
         private readonly LabelingService $labelingService,
+        #[AutowireIterator('bank.extractor')]
+        iterable $extractors,
     ) {
+        $this->extractors = array_values([...$extractors]);
     }
 
     /**
@@ -86,93 +66,32 @@ class CsvImportService
      */
     public function importCsv(string $filePath, string $bankType, string $csvSource): array
     {
-        if (! in_array($bankType, self::SUPPORTED_BANKS, true)) {
-            throw new InvalidArgumentException(sprintf('Unsupported bank type: %s', $bankType));
-        }
+        $bankExtractor = $this->findExtractor($bankType);
 
-        return $this->importBelfiusCsv($filePath, $csvSource);
-    }
-
-    /**
-     * @return array{
-     *     imported: int,
-     *     skippedDuplicates: int,
-     *     skippedReversedInternal: int,
-     *     skippedInvalidData: int,
-     *     errors: array<string>
-     * }
-     */
-    private function importBelfiusCsv(string $filePath, string $csvSource): array
-    {
         $handle = fopen($filePath, 'r');
         if ($handle === false) {
             throw new RuntimeException('Could not open CSV file');
         }
+
+        // Reset per-import in-memory caches
+        $this->accountCache = [];
 
         $imported                = 0;
         $skippedDuplicates       = 0;
         $skippedReversedInternal = 0;
         $skippedInvalidData      = 0;
         $errors                  = [];
-        $this->logger->info('Starting CSV import', ['source' => $csvSource]);
 
-        $lineNum     = 0;
-        $headerFound = false;
+        $this->logger->info('Starting CSV import', ['source' => $csvSource, 'bankType' => $bankType]);
+
+        $lineNum = 0;
 
         try {
-            while (! feof($handle)) {
-                $row = fgetcsv($handle, 0, self::BELFIUS_DELIMITER, '"', '');
+            foreach ($bankExtractor->extract($handle) as $transferData) {
                 $lineNum++;
 
-                if ($row === false) {
-                    continue;
-                }
-
-                // Convert encoding if needed (Belfius exports may use Windows-1252)
-                $row = array_map(
-                    static function (mixed $v): string {
-                        $str = (string) $v;
-
-                        return mb_convert_encoding($str, 'UTF-8', 'UTF-8,Windows-1252') ?: $str;
-                    },
-                    $row,
-                );
-
-                // Skip metadata rows until we find the column header row
-                if (! $headerFound) {
-                    if (trim($row[0]) === self::BELFIUS_HEADER_MARKER) {
-                        $headerFound = true;
-                    }
-
-                    continue;
-                }
-
-                    // Skip empty or too-short rows (invalid data)
-                if (count($row) < self::COL_REFERENCE + 1) {
-                    $skippedInvalidData++;
-                    $this->logger->warning('Skipped invalid row: too few columns', [
-                        'source'  => $csvSource,
-                        'line'    => $lineNum,
-                        'columns' => count($row),
-                        'required' => self::COL_REFERENCE + 1,
-                        'reason'  => 'insufficient_columns',
-                    ]);
-                    continue;
-                }
-
-                    $ownAccount = trim($row[self::COL_OWN_ACCOUNT]);
-                if ($ownAccount === '') {
-                    $skippedInvalidData++;
-                    $this->logger->warning('Skipped invalid row: missing own account number', [
-                        'source' => $csvSource,
-                        'line'   => $lineNum,
-                        'reason' => 'missing_own_account',
-                    ]);
-                    continue;
-                }
-
                 try {
-                    $result = $this->processBelfiusRow($row, $csvSource);
+                    $result = $this->processTransferData($transferData, $csvSource);
 
                     switch ($result) {
                         case 'imported':
@@ -183,11 +102,11 @@ class CsvImportService
                             $this->logger->warning('Skipped duplicate transfer', [
                                 'source'        => $csvSource,
                                 'line'          => $lineNum,
-                                'transactionId' => trim($row[self::COL_TRANSACTION]),
-                                'date'          => trim($row[self::COL_DATE]),
-                                'amount'        => trim($row[self::COL_AMOUNT]),
-                                'fromAccount'   => trim($row[self::COL_COUNTERPARTY]),
-                                'reference'     => trim($row[self::COL_REFERENCE]),
+                                'transactionId' => $transferData->transactionId,
+                                'date'          => $transferData->date->format('Y-m-d'),
+                                'amount'        => $transferData->amount,
+                                'fromAccount'   => $transferData->counterAccountNumber,
+                                'reference'     => $transferData->reference,
                                 'reason'        => 'duplicate_transfer',
                             ]);
                             break;
@@ -196,8 +115,8 @@ class CsvImportService
                             $this->logger->info('Cancelled reversed internal transfer pair', [
                                 'source' => $csvSource,
                                 'line'   => $lineNum,
-                                'date'   => trim($row[self::COL_DATE]),
-                                'amount' => trim($row[self::COL_AMOUNT]),
+                                'date'   => $transferData->date->format('Y-m-d'),
+                                'amount' => $transferData->amount,
                                 'reason' => 'reversed_internal_transfer',
                             ]);
                             break;
@@ -207,36 +126,21 @@ class CsvImportService
                     $message  = sprintf('Line %d: %s', $lineNum, $e->getMessage());
                     $errors[] = $message;
                     $this->logger->error('Failed to import CSV row', [
-                        'source'    => $csvSource,
-                        'line'      => $lineNum,
-                        'error'     => $e->getMessage(),
-                        'exception' => $e,
-                        'reason'    => 'processing_error',
-                        'rowData'   => [
-                            'transactionId' => trim($row[self::COL_TRANSACTION]),
-                            'date'          => trim($row[self::COL_DATE]),
-                            'amount'        => trim($row[self::COL_AMOUNT]),
-                            'counterparty'  => trim($row[self::COL_COUNTERPARTY]),
-                            'reference'     => trim($row[self::COL_REFERENCE]),
-                        ],
+                        'source'        => $csvSource,
+                        'line'          => $lineNum,
+                        'error'         => $e->getMessage(),
+                        'exception'     => $e,
+                        'reason'        => 'processing_error',
+                        'transactionId' => $transferData->transactionId,
+                        'date'          => $transferData->date->format('Y-m-d'),
+                        'amount'        => $transferData->amount,
+                        'counterparty'  => $transferData->counterAccountNumber,
+                        'reference'     => $transferData->reference,
                     ]);
                 }
             }
         } finally {
             fclose($handle);
-        }
-
-        if (! $headerFound) {
-            $this->logger->error('CSV import failed: header row not found', [
-                'source' => $csvSource,
-                'reason' => 'missing_header',
-                'expectedMarker' => self::BELFIUS_HEADER_MARKER,
-            ]);
-
-            throw new RuntimeException(
-                'Could not find the Belfius CSV header row. '
-                . 'Please export the file from Belfius and upload it without modifications.',
-            );
         }
 
         $this->logger->info('CSV import finished', [
@@ -249,71 +153,65 @@ class CsvImportService
         ]);
 
         return [
-            'imported'               => $imported,
-            'skippedDuplicates'      => $skippedDuplicates,
+            'imported'                => $imported,
+            'skippedDuplicates'       => $skippedDuplicates,
             'skippedReversedInternal' => $skippedReversedInternal,
-            'skippedInvalidData'     => $skippedInvalidData,
-            'errors'                 => $errors,
+            'skippedInvalidData'      => $skippedInvalidData,
+            'errors'                  => $errors,
         ];
     }
 
     /**
-     * Process a single Belfius CSV data row.
+     * Find the extractor that supports the given bank type.
+     *
+     * @throws InvalidArgumentException When no extractor is registered for the bank type.
+     */
+    private function findExtractor(string $bankType): BankExtractorInterface
+    {
+        foreach ($this->extractors as $extractor) {
+            if ($extractor->supports($bankType)) {
+                return $extractor;
+            }
+        }
+
+        throw new InvalidArgumentException(sprintf(
+            'Unsupported bank type: "%s". Registered extractors support: %s.',
+            $bankType,
+            implode(', ', array_map(
+                static fn (BankExtractorInterface $bankExtractor): string => $bankExtractor::class,
+                $this->extractors,
+            )),
+        ));
+    }
+
+    /**
+     * Apply business logic to a single extracted transfer row.
      *
      * Returns one of:
      *   'imported'          – the transfer was persisted
-     *   'duplicate'         – a transfer with the same transaction ID / fingerprint already exists
+     *   'duplicate'         – a transfer with the same fingerprint already exists
      *   'reversed_internal' – both accounts are internal and the reversed transfer was cancelled out
-     *
-     * @param array<int, string> $row
      *
      * @return 'imported'|'duplicate'|'reversed_internal'
      */
-    private function processBelfiusRow(array $row, string $csvSource): string
+    private function processTransferData(BankTransferData $bankTransferData, string $csvSource): string
     {
-        $ownAccountRaw = trim($row[self::COL_OWN_ACCOUNT]);
-        $dateStr       = trim($row[self::COL_DATE]);
-        $transactionId = trim($row[self::COL_TRANSACTION]);
-        $counterNoRaw  = trim($row[self::COL_COUNTERPARTY]);
-        $counterName   = trim($row[self::COL_COUNTER_NAME]) ?: null;
-        $amountRaw     = trim($row[self::COL_AMOUNT]);
-        $reference     = trim($row[self::COL_REFERENCE]);
-
-        // Normalize own account number
-        $ownAccountNo = $this->normalizeAccountNumber($ownAccountRaw);
-
-        // Parse date
-        $date = DateTimeImmutable::createFromFormat(self::BELFIUS_DATE_FORMAT, $dateStr);
-        if ($date === false) {
-            throw new InvalidArgumentException(sprintf('Invalid date format: "%s"', $dateStr));
-        }
-
-        // Normalise amount: Belfius uses comma as decimal separator ("1950,00" / "-22,50")
-        $amount = str_replace(',', '.', $amountRaw);
-        if (! is_numeric($amount)) {
-            throw new InvalidArgumentException(sprintf('Invalid amount: "%s"', $amountRaw));
-        }
-
-        // Normalize counter account number (may be empty)
-        $counterNo = $counterNoRaw !== '' ? $this->normalizeAccountNumber($counterNoRaw) : null;
-
-        // Determine from/to accounts
-        // Positive amount → money comes IN → counterparty is sender (from), own is receiver (to)
-        // Negative amount → money goes OUT → own is sender (from), counterparty is receiver (to)
-        $amountFloat = (float) $amount;
+        // Positive amount → money IN → counterparty is sender (from), own account is receiver (to)
+        // Negative amount → money OUT → own account is sender (from), counterparty is receiver (to)
+        $amountFloat = (float) $bankTransferData->amount;
         if ($amountFloat >= 0) {
-            $fromAccountNo   = $counterNo;
-            $fromAccountName = $counterName;
-            $toAccountNo     = $ownAccountNo;
-            $toAccountName   = null; // own account name derived from number
+            $fromAccountNo   = $bankTransferData->counterAccountNumber;
+            $fromAccountName = $bankTransferData->counterAccountName;
+            $toAccountNo     = $bankTransferData->ownAccountNumber;
+            $toAccountName   = null;
             $fromIsInternal  = false;
-            $toIsInternal    = true; // own account is always internal
+            $toIsInternal    = true;
         } else {
-            $fromAccountNo   = $ownAccountNo;
+            $fromAccountNo   = $bankTransferData->ownAccountNumber;
             $fromAccountName = null;
-            $toAccountNo     = $counterNo;
-            $toAccountName   = $counterName;
-            $fromIsInternal  = true; // own account is always internal
+            $toAccountNo     = $bankTransferData->counterAccountNumber;
+            $toAccountName   = $bankTransferData->counterAccountName;
+            $fromIsInternal  = true;
             $toIsInternal    = false;
         }
 
@@ -321,37 +219,37 @@ class CsvImportService
         $toAccount   = $this->getOrCreateBankAccount($toAccountNo, $toAccountName, $toIsInternal);
 
         $transfer = new Transfer();
-        $transfer->setAmount($amount);
-        $transfer->setDate($date);
+        $transfer->setAmount($bankTransferData->amount);
+        $transfer->setDate($bankTransferData->date);
         $transfer->setFromAccount($bankAccount);
         $transfer->setToAccount($toAccount);
-        $transfer->setReference($reference);
+        $transfer->setReference($bankTransferData->reference);
         $transfer->setCsvSource($csvSource);
 
-        if ($transactionId !== '') {
-            $transfer->setTransactionId($transactionId);
+        if ($bankTransferData->transactionId !== null) {
+            $transfer->setTransactionId($bankTransferData->transactionId);
         }
 
         $fingerprint = $this->generateFingerprint(
-            $date,
-            $amount,
+            $bankTransferData->date,
+            $bankTransferData->amount,
             (string) $fromAccountNo,
             (string) $toAccountNo,
-            $reference,
-            $transactionId,
+            $bankTransferData->reference,
+            (string) $bankTransferData->transactionId,
         );
         $transfer->setFingerprint($fingerprint);
 
         $isInternal = $bankAccount->isInternal() && $toAccount->isInternal();
         $transfer->setIsInternal($isInternal);
 
-        // Filter: if both accounts are internal and a reversed transfer already exists, delete it and skip this one
+        // If both accounts are internal and a reversed transfer already exists, cancel the pair
         if (
             $isInternal && $this->transferService->deleteReversedInternalTransfer(
                 $bankAccount,
                 $toAccount,
-                $amount,
-                $date,
+                $bankTransferData->amount,
+                $bankTransferData->date,
             )
         ) {
             return 'reversed_internal';
@@ -360,10 +258,9 @@ class CsvImportService
         $saved = $this->transferService->saveTransfer($transfer);
 
         if ($saved) {
-            // Update balances: from account always loses |amount|, to account always gains |amount|.
-            // The stored amount can be negative (outgoing) or positive (incoming) from the CSV,
-            // so we work with the absolute value to avoid double-negation.
-            $absAmount = ltrim($amount, '-');
+            // from account always loses |amount|, to account always gains |amount|
+            $absAmount = ltrim($bankTransferData->amount, '-');
+            assert(is_numeric($absAmount));
             $this->updateAccountBalance($bankAccount, bcsub('0', $absAmount, 2));
             $this->updateAccountBalance($toAccount, $absAmount);
 
@@ -375,41 +272,31 @@ class CsvImportService
         return $saved ? 'imported' : 'duplicate';
     }
 
-    /**
-     * Normalize IBAN-style account number to format: BEXX XXXX XXXX XXXX
-     * Strips all spaces, uppercases, then re-inserts spaces every 4 chars.
-     */
-    private function normalizeAccountNumber(string $accountNumber): string
-    {
-        // Strip all whitespace and uppercase
-        $stripped = strtoupper((string) preg_replace('/\s+/', '', $accountNumber));
-
-        if ($stripped === '') {
-            return '';
-        }
-
-        // Insert a space every 4 characters
-        return (string) preg_replace('/(.{4})(?=.)/', '$1 ', $stripped);
-    }
-
     private function getOrCreateBankAccount(
         string|null $accountNumber,
         string|null $accountName,
         bool $isInternal,
     ): BankAccount {
-        // Only store valid values; set null if not found
         $normalizedNumber = $accountNumber !== null && $accountNumber !== '' ? $accountNumber : null;
         $normalizedName   = $accountName !== null && $accountName !== '' ? $accountName : null;
 
-        $hash    = BankAccount::calculateHash($normalizedName, $normalizedNumber);
+        $hash = BankAccount::calculateHash($normalizedName, $normalizedNumber);
+
+        // Check in-memory cache first to avoid a DB round-trip per row
+        if (isset($this->accountCache[$hash])) {
+            $account = $this->accountCache[$hash];
+
+            $this->upgradeAccount($account, $normalizedName, $isInternal);
+
+            return $account;
+        }
+
         $account = $this->bankAccountRepository->findByHash($hash);
 
         if ($account instanceof BankAccount) {
-            // If this account is now known to be internal (own account), upgrade it
-            if ($isInternal && ! $account->isInternal()) {
-                $account->setIsInternal(true);
-                $this->bankAccountRepository->save($account, true);
-            }
+            $this->upgradeAccount($account, $normalizedName, $isInternal);
+
+            $this->accountCache[$hash] = $account;
 
             return $account;
         }
@@ -422,7 +309,35 @@ class CsvImportService
 
         $this->bankAccountRepository->save($account, true);
 
+        $this->accountCache[$hash] = $account;
+
         return $account;
+    }
+
+    /**
+     * Enrich an existing account in-place when we learn new information about it:
+     *   - Backfill the name when it was previously unknown.
+     *   - Promote to internal when the own-account CSV is processed.
+     */
+    private function upgradeAccount(BankAccount $bankAccount, string|null $normalizedName, bool $isInternal): void
+    {
+        $dirty = false;
+
+        if ($normalizedName !== null && $bankAccount->getAccountName() === null) {
+            $bankAccount->setAccountName($normalizedName);
+            $dirty = true;
+        }
+
+        if ($isInternal && ! $bankAccount->isInternal()) {
+            $bankAccount->setIsInternal(true);
+            $dirty = true;
+        }
+
+        if (! $dirty) {
+            return;
+        }
+
+        $this->bankAccountRepository->save($bankAccount, true);
     }
 
     /** @param numeric-string $amount */
@@ -430,7 +345,9 @@ class CsvImportService
     {
         $newBalance = bcadd($bankAccount->getTotalBalance(), $amount, 2);
         $bankAccount->setTotalBalance($newBalance);
-        $this->bankAccountRepository->save($bankAccount, true);
+        // No explicit flush here: the entity is already managed by Doctrine, so the
+        // balance change will be committed together with the transfer in saveTransfer().
+        $this->bankAccountRepository->save($bankAccount);
     }
 
     private function generateFingerprint(

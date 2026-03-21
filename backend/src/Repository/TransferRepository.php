@@ -8,6 +8,7 @@ use App\Entity\BankAccount;
 use App\Entity\Transfer;
 use DateTimeImmutable;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
+use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\QueryBuilder;
 use Doctrine\Persistence\ManagerRegistry;
 use Override;
@@ -15,8 +16,10 @@ use Override;
 use function array_keys;
 use function array_map;
 use function assert;
+use function floatval;
 use function implode;
 use function is_int;
+use function number_format;
 use function sprintf;
 
 /** @extends ServiceEntityRepository<Transfer> */
@@ -148,11 +151,11 @@ class TransferRepository extends ServiceEntityRepository
             ->andWhere('t.fromAccount = :from')
             ->andWhere('t.toAccount = :to')
             ->andWhere('t.amount = :amount')
-            ->andWhere('t.date = :date')
-            ->setParameter('from', $toAccount)
-            ->setParameter('to', $fromAccount)
-            ->setParameter('amount', $amount)
-            ->setParameter('date', $date)
+            ->andWhere('t.date = :day')
+            ->setParameter('from', $fromAccount)
+            ->setParameter('to', $toAccount)
+            ->setParameter('amount', number_format(floatval($amount) * -1, 2, '.', ''))
+            ->setParameter('day', $date->setTime(0, 0), Types::DATETIME_IMMUTABLE)
             ->setMaxResults(1)
             ->getQuery()
             ->getOneOrNullResult();

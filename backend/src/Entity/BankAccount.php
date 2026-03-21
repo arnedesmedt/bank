@@ -186,17 +186,29 @@ class BankAccount
     }
 
     /**
-     * T009: Calculate a stable SHA-256 hash from account name and number.
-     * Used for uniqueness checks on creation/import only.
-     * Concatenates normalized number and name (lowercased, pipe-separated) for reliable hashing.
+     * Calculate a stable SHA-256 hash used for bank-account uniqueness.
+     *
+     * Strategy:
+     *   - If a valid account number is present, hash on the number alone.
+     *     This guarantees that BE71… always resolves to the same entity
+     *     regardless of whether it appears as an own account (no name in CSV)
+     *     or as a counterparty (name present in CSV).
+     *   - If no valid number is available, fall back to the name alone,
+     *     prefixed with "name:" to avoid collisions with number-only hashes.
+     *   - If neither is present the hash is computed from an empty string
+     *     (edge case – both parties are anonymous).
      */
     public static function calculateHash(string|null $accountName, string|null $accountNumber): string
     {
-        $normalizedNumber = self::normalizeAccountNumber($accountNumber) ?? '';
-        $cleanName        = $accountName !== null ? trim($accountName) : '';
-        $raw              = strtolower($normalizedNumber . '|' . $cleanName);
+        $normalizedNumber = self::normalizeAccountNumber($accountNumber);
 
-        return hash('sha256', $raw);
+        if ($normalizedNumber !== null && $normalizedNumber !== '') {
+            return hash('sha256', strtolower($normalizedNumber));
+        }
+
+        $cleanName = $accountName !== null ? trim($accountName) : '';
+
+        return hash('sha256', 'name:' . strtolower($cleanName));
     }
 
     /**

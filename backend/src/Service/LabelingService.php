@@ -13,10 +13,14 @@ use App\Repository\TransferRepository;
 use Symfony\Component\Uid\Uuid;
 
 use function array_any;
+use function array_values;
 use function preg_match;
 
 class LabelingService
 {
+    /** @var list<Label>|null In-memory cache; populated on first use, cleared by clearCache() */
+    private array|null $labelsCache = null;
+
     public function __construct(
         private readonly LabelRepository $labelRepository,
         private readonly LabelTransferLinkRepository $labelTransferLinkRepository,
@@ -25,12 +29,35 @@ class LabelingService
     }
 
     /**
+     * Clear the in-memory labels cache.
+     * Call this after any operation that modifies labels so the cache stays consistent.
+     */
+    public function clearCache(): void
+    {
+        $this->labelsCache = null;
+    }
+
+    /**
+     * Return all labels, using the in-memory cache to avoid repeated DB queries.
+     *
+     * @return list<Label>
+     */
+    private function getAllLabels(): array
+    {
+        if ($this->labelsCache === null) {
+            $this->labelsCache = array_values($this->labelRepository->findAll());
+        }
+
+        return $this->labelsCache;
+    }
+
+    /**
      * Auto-label a single transfer based on all label rules (bank account and regex).
      * Only creates automatic links. Existing manual links are never touched.
      */
     public function autoLabel(Transfer $transfer): void
     {
-        $labels  = $this->labelRepository->findAll();
+        $labels  = $this->getAllLabels();
         $applied = false;
 
         foreach ($labels as $label) {

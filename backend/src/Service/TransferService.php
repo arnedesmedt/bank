@@ -86,24 +86,6 @@ class TransferService
     }
 
     /**
-     * Check if a reversed internal transfer already exists.
-     * Used to filter out duplicate mirrored internal transfers.
-     */
-    public function hasReversedInternalTransfer(
-        BankAccount $fromAccount,
-        BankAccount $toAccount,
-        string $amount,
-        DateTimeImmutable $date,
-    ): bool {
-        return $this->transferRepository->findReversedInternalTransfer(
-            $fromAccount,
-            $toAccount,
-            $amount,
-            $date,
-        ) instanceof Transfer;
-    }
-
-    /**
      * T018: Find and delete the reversed internal transfer, reversing its balance impact.
      *
      * When a new internal transfer matches a previously saved reversed internal transfer

@@ -19,7 +19,7 @@ use function ltrim;
 #[ORM\Entity(repositoryClass: TransferRepository::class)]
 #[ORM\Table(name: 'transfers')]
 #[ORM\Index(name: 'idx_transaction_id', columns: ['transaction_id'])]
-#[ORM\Index(name: 'idx_fingerprint', columns: ['fingerprint'])]
+#[ORM\UniqueConstraint(name: 'uniq_fingerprint', columns: ['fingerprint'])]
 #[ORM\Index(name: 'idx_date', columns: ['date'])]
 class Transfer
 {
@@ -62,7 +62,7 @@ class Transfer
     #[ORM\Column(type: 'string', length: 255, nullable: true)]
     private string|null $transactionId = null;
 
-    #[ORM\Column(type: 'string', length: 255, unique: true)]
+    #[ORM\Column(type: 'string', length: 255)]
     private string $fingerprint;
 
     #[ORM\Column(type: 'boolean')]
