@@ -68,6 +68,14 @@ class Transfer
     #[ORM\Column(type: 'boolean')]
     private bool $isInternal = false;
 
+    /**
+     * True when this transfer is one half of a reversed internal pair.
+     * Both legs of the pair are kept for idempotency but excluded from all
+     * normal queries and balance calculations.
+     */
+    #[ORM\Column(type: 'boolean')]
+    private bool $isReversed = false;
+
     #[ORM\ManyToOne(targetEntity: self::class, inversedBy: 'childRefunds')]
     #[ORM\JoinColumn(name: 'parent_transfer_uuid', referencedColumnName: 'uuid', nullable: true, onDelete: 'SET NULL')]
     private Transfer|null $parentTransfer = null;
@@ -251,6 +259,18 @@ class Transfer
     public function setIsInternal(bool $isInternal): self
     {
         $this->isInternal = $isInternal;
+
+        return $this;
+    }
+
+    public function isReversed(): bool
+    {
+        return $this->isReversed;
+    }
+
+    public function setIsReversed(bool $isReversed): self
+    {
+        $this->isReversed = $isReversed;
 
         return $this;
     }

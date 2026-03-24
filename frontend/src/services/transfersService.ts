@@ -70,10 +70,10 @@ export async function fetchTransfers(
     if (filters.dateTo) params.set('dateTo', filters.dateTo);
     if (filters.accountId) params.set('accountId', filters.accountId);
     if (filters.labelIds && filters.labelIds.length > 0) {
+        filters.labelIds.forEach((id) => params.append('labelIds[]', id));
+    }
     if (filters.accountIds && filters.accountIds.length > 0) {
         filters.accountIds.forEach((id) => params.append('accountIds[]', id));
-    }
-        filters.labelIds.forEach((id) => params.append('labelIds[]', id));
     }
 
     const query = params.toString();

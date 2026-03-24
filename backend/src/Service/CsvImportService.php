@@ -243,15 +243,19 @@ class CsvImportService
         $isInternal = $bankAccount->isInternal() && $toAccount->isInternal();
         $transfer->setIsInternal($isInternal);
 
-        // If both accounts are internal and a reversed transfer already exists, cancel the pair
+        // If both accounts are internal and a mirror transfer already exists, mark both as reversed.
         if (
-            $isInternal && $this->transferService->deleteReversedInternalTransfer(
+            $isInternal && $this->transferService->markReversedInternalTransfer(
                 $bankAccount,
                 $toAccount,
                 $bankTransferData->amount,
                 $bankTransferData->date,
             )
         ) {
+            // Persist B as reversed so re-importing the same CSV is idempotent.
+            $transfer->setIsReversed(true);
+            $this->transferService->saveTransfer($transfer);
+
             return 'reversed_internal';
         }
 

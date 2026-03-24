@@ -86,17 +86,18 @@ class TransferService
     }
 
     /**
-     * T018: Find and delete the reversed internal transfer, reversing its balance impact.
+     * Find the mirror of an internal transfer, mark it as reversed, and undo its balance impact.
      *
-     * When a new internal transfer matches a previously saved reversed internal transfer
-     * (same amount negated, same date, accounts switched), we must:
-     * 1. Undo the balance updates that were applied when the reversed transfer was saved.
-     * 2. Delete the reversed transfer from the database.
+     * Both legs of a reversed internal pair are kept in the database so that
+     * re-importing the same CSV files is fully idempotent (fingerprint uniqueness
+     * prevents re-insertion).  Neither leg appears in normal queries because
+     * all collection methods filter on isReversed = false.
      *
-     * This ensures "neither transfer is persisted" per the spec.
-     * Returns true if a reversed transfer was found and deleted, false otherwise.
+     * Returns true if a (non-yet-reversed) mirror was found and marked, false otherwise.
+     *
+     * @param numeric-string $amount
      */
-    public function deleteReversedInternalTransfer(
+    public function markReversedInternalTransfer(
         BankAccount $fromAccount,
         BankAccount $toAccount,
         string $amount,
@@ -112,18 +113,20 @@ class TransferService
             return false;
         }
 
-        // Undo balance updates for the reversed transfer.
-        $bankAccount       = $reversed->getFromAccount();
-        $reversedToAccount = $reversed->getToAccount();
-        $reversedAmount    = $reversed->getAmount();
-        $absReversedAmount = ltrim($reversedAmount, '-');
-        // Restore from-account (give back what it lost)
-        $bankAccount->adjustBalance($absReversedAmount);
+        // Undo balance updates that were applied when the first leg was saved.
+        $bankAccount = $reversed->getFromAccount();
+        $reversedTo  = $reversed->getToAccount();
+        $absAmount   = ltrim($reversed->getAmount(), '-');
+        // Give back what the from-account lost.
+        $bankAccount->adjustBalance($absAmount);
         $this->bankAccountRepository->save($bankAccount, true);
-        // Restore to-account (take back what it gained)
-        $reversedToAccount->adjustBalance(bcsub('0', $absReversedAmount, 2));
-        $this->bankAccountRepository->save($reversedToAccount, true);
-        $this->transferRepository->remove($reversed, true);
+        // Take back what the to-account gained.
+        $reversedTo->adjustBalance(bcsub('0', $absAmount, 2));
+        $this->bankAccountRepository->save($reversedTo, true);
+
+        // Mark the first leg as reversed and persist it (no delete).
+        $reversed->setIsReversed(true);
+        $this->transferRepository->save($reversed, true);
 
         return true;
     }

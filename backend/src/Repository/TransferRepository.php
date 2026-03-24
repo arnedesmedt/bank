@@ -12,14 +12,16 @@ use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\QueryBuilder;
 use Doctrine\Persistence\ManagerRegistry;
 use Override;
+use Symfony\Component\Uid\Uuid;
 
+use function array_filter;
 use function array_keys;
 use function array_map;
+use function array_values;
 use function assert;
-use function floatval;
+use function bcsub;
 use function implode;
 use function is_int;
-use function number_format;
 use function sprintf;
 
 /** @extends ServiceEntityRepository<Transfer> */
@@ -79,6 +81,7 @@ class TransferRepository extends ServiceEntityRepository
         /** @var array<Transfer> $result */
         $result = $this->createQueryBuilder('t')
             ->andWhere('t.fromAccount = :account OR t.toAccount = :account')
+            ->andWhere('t.isReversed = false')
             ->setParameter('account', $bankAccount)
             ->orderBy('t.date', 'DESC')
             ->setMaxResults($limit)
@@ -95,6 +98,7 @@ class TransferRepository extends ServiceEntityRepository
     {
         /** @var array<Transfer> $result */
         $result = $this->createQueryBuilder('t')
+            ->andWhere('t.isReversed = false')
             ->orderBy('t.date', 'DESC')
             ->setMaxResults($limit)
             ->setFirstResult($offset)
@@ -110,6 +114,7 @@ class TransferRepository extends ServiceEntityRepository
         /** @var array<Transfer> $result */
         $result = $this->createQueryBuilder('t')
             ->andWhere('t.isInternal = :isInternal')
+            ->andWhere('t.isReversed = false')
             ->setParameter('isInternal', false)
             ->orderBy('t.date', 'DESC')
             ->setMaxResults($limit)
@@ -141,6 +146,17 @@ class TransferRepository extends ServiceEntityRepository
      * A "reversed" transfer has the accounts switched and the same amount, on the same date.
      * (In the Belfius dual-export scenario: A→B,-50 is the reverse of B→A,-50 on the same date.)
      */
+
+    /**
+     * Find the non-reversed mirror of an internal transfer.
+     *
+     * Both legs of a dual-export pair share the same from/to accounts;
+     * only the amount is negated (A=-50, B=+50).
+     * Dates are always stored at midnight so a plain equality comparison is safe.
+     * We only target non-reversed rows so an already-marked pair can never match again.
+     *
+     * @param numeric-string $amount
+     */
     public function findReversedInternalTransfer(
         BankAccount $fromAccount,
         BankAccount $toAccount,
@@ -151,11 +167,12 @@ class TransferRepository extends ServiceEntityRepository
             ->andWhere('t.fromAccount = :from')
             ->andWhere('t.toAccount = :to')
             ->andWhere('t.amount = :amount')
-            ->andWhere('t.date = :day')
+            ->andWhere('t.date = :date')
+            ->andWhere('t.isReversed = false')
             ->setParameter('from', $fromAccount)
             ->setParameter('to', $toAccount)
-            ->setParameter('amount', number_format(floatval($amount) * -1, 2, '.', ''))
-            ->setParameter('day', $date->setTime(0, 0), Types::DATETIME_IMMUTABLE)
+            ->setParameter('amount', bcsub('0', $amount, 2))
+            ->setParameter('date', $date->setTime(0, 0, 0), Types::DATETIME_IMMUTABLE)
             ->setMaxResults(1)
             ->getQuery()
             ->getOneOrNullResult();
@@ -283,7 +300,8 @@ class TransferRepository extends ServiceEntityRepository
         array $accountIds = [],
         string|null $accountId = null,
     ): QueryBuilder {
-        $queryBuilder = $this->createQueryBuilder('t');
+        $queryBuilder = $this->createQueryBuilder('t')
+            ->andWhere('t.isReversed = false');
 
         if ($search !== null && $search !== '') {
             $queryBuilder->andWhere('LOWER(t.reference) LIKE LOWER(:search) OR LOWER(t.csvSource) LIKE LOWER(:search)')
@@ -308,8 +326,15 @@ class TransferRepository extends ServiceEntityRepository
         }
 
         if ($accountIds !== []) {
-            $queryBuilder->andWhere('t.fromAccount IN (:accountIds) OR t.toAccount IN (:accountIds)')
-                ->setParameter('accountIds', $accountIds);
+            $uuids = array_values(array_filter(array_map(
+                static fn (string $id): Uuid|null => Uuid::isValid($id) ? Uuid::fromRfc4122($id) : null,
+                $accountIds,
+            )));
+
+            if ($uuids !== []) {
+                $queryBuilder->andWhere('t.fromAccount IN (:accountIds) OR t.toAccount IN (:accountIds)')
+                    ->setParameter('accountIds', $uuids);
+            }
         }
 
         if ($accountId !== null && $accountId !== '') {
@@ -344,7 +369,7 @@ class TransferRepository extends ServiceEntityRepository
     ): array {
         $connection = $this->getEntityManager()->getConnection();
 
-        $where  = [];
+        $where  = ['t.is_reversed = false'];
         $params = [];
 
         if ($dateFrom instanceof DateTimeImmutable) {
@@ -365,7 +390,7 @@ class TransferRepository extends ServiceEntityRepository
             }
         }
 
-        $whereClause = $where !== [] ? 'WHERE ' . implode(' AND ', $where) : '';
+        $whereClause = 'WHERE ' . implode(' AND ', $where);
 
         $periodExpr = match ($period) {
             'quarter' => "TO_CHAR(t.date, 'YYYY') || '-Q' || TO_CHAR(t.date, 'Q')",

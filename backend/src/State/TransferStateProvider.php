@@ -49,12 +49,7 @@ class TransferStateProvider implements ProviderInterface
         $dateFrom   = null;
         $dateTo     = null;
         $labelIds   = [];
-        $accountId  = null;
         $accountIds = [];
-        $accountId  = null;
-        $dateFrom   = null;
-        $dateTo     = null;
-        $labelIds   = [];
         $accountId  = null;
 
         if (isset($filters['search']) && is_string($filters['search']) && $filters['search'] !== '') {
