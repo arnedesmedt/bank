@@ -29,7 +29,7 @@ export const LoginForm: React.FC = () => {
                     </div>
                 )}
 
-                <form onSubmit={handleSubmit} className="space-y-4">
+                <form onSubmit={handleSubmit} className="space-y-4" autoComplete="on">
                     <div>
                         <label
                             htmlFor="email"
@@ -43,6 +43,7 @@ export const LoginForm: React.FC = () => {
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
                             required
+                            autoComplete="email"
                             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                             placeholder="you@example.com"
                         />
@@ -61,6 +62,7 @@ export const LoginForm: React.FC = () => {
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
                             required
+                            autoComplete="current-password"
                             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                             placeholder="••••••••"
                         />

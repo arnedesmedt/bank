@@ -34,11 +34,8 @@ services:
         depends_on:
             db:
                 condition: service_healthy
-        environment:
-            DATABASE_URL: "postgresql://${POSTGRES_USER:-bank_user}:${POSTGRES_PASSWORD:-bank_password}@db:5432/${POSTGRES_DB:-bank_app}?serverVersion=16&charset=utf8"
-            XDEBUG_MODE: debug,develop,coverage
-            XDEBUG_CONFIG: client_host=host.docker.internal
-            PHP_IDE_CONFIG: "serverName=bank-app"
+        env_file:
+            - ./backend/.env
 
     # Nginx Web Server
     nginx:
