@@ -7,6 +7,7 @@ interface Label {
   name: string;
   parentLabelId: string | null;
   parentLabelName: string | null;
+  childLabelIds: string[];
   linkedBankAccountIds: string[];
   linkedRegexes: string[];
   maxValue: string | null;
@@ -38,6 +39,7 @@ function LabelManager() {
   const [formParentLabelId, setFormParentLabelId] = useState<string>('');
   const [formLinkedBankAccountIds, setFormLinkedBankAccountIds] = useState<string[]>([]);
   const [formLinkedRegexes, setFormLinkedRegexes] = useState<string[]>([]);
+  const [formChildLabelIds, setFormChildLabelIds] = useState<string[]>([]);
   const [formRegexInput, setFormRegexInput] = useState('');
   const [formMaxValue, setFormMaxValue] = useState('');
   const [formMaxPercentage, setFormMaxPercentage] = useState('');
@@ -77,6 +79,7 @@ function LabelManager() {
     setFormParentLabelId('');
     setFormLinkedBankAccountIds([]);
     setFormLinkedRegexes([]);
+    setFormChildLabelIds([]);
     setFormRegexInput('');
     setFormMaxValue('');
     setFormMaxPercentage('');
@@ -103,6 +106,12 @@ function LabelManager() {
     );
   };
 
+  const toggleChildLabel = (childLabelId: string) => {
+    setFormChildLabelIds((prev) =>
+      prev.includes(childLabelId) ? prev.filter((id) => id !== childLabelId) : [...prev, childLabelId],
+    );
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!accessToken) return;
@@ -121,6 +130,7 @@ function LabelManager() {
           parentLabelId: formParentLabelId !== '' ? formParentLabelId : null,
           linkedBankAccountIds: formLinkedBankAccountIds,
           linkedRegexes: formLinkedRegexes,
+          childLabelIds: formChildLabelIds,
           maxValue: formMaxValue !== '' ? formMaxValue : null,
           maxPercentage: formMaxPercentage !== '' ? formMaxPercentage : null,
         }),
@@ -206,6 +216,26 @@ function LabelManager() {
                 ))}
               </select>
             </div>
+
+            {/* Child Labels */}
+            {labels.length > 0 && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Child Labels (optional)</label>
+                <div className="space-y-1 max-h-40 overflow-y-auto border border-gray-200 rounded p-2 bg-white" data-testid="child-label-checkboxes">
+                  {labels.filter((label) => label.id !== formParentLabelId || formParentLabelId === '').map((label) => (
+                    <label key={label.id} className="flex items-center gap-2 text-sm cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={formChildLabelIds.includes(label.id)}
+                        onChange={() => toggleChildLabel(label.id)}
+                        data-testid={`child-label-checkbox-${label.id}`}
+                      />
+                      <span>{label.name}{label.parentLabelName != null ? ` (child of ${label.parentLabelName})` : ''}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Linked Bank Accounts */}
             {bankAccounts.length > 0 && (

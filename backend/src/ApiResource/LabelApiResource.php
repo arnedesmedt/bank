@@ -75,6 +75,9 @@ class LabelApiResource
     /** @var array<string> */
     public array $linkedRegexes = [];
 
+    /** @var array<string> */
+    public array $childLabelIds = [];
+
     public string|null $maxValue = null;
 
     public string|null $maxPercentage = null;

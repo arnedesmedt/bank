@@ -14,6 +14,8 @@ use App\Repository\LabelRepository;
 use LogicException;
 use Symfony\Component\Uid\Uuid;
 
+use function in_array;
+
 /**
  * Maps between ApiResource DTOs and Doctrine Entities.
  * Handles the complex relational mapping that Symfony ObjectMapper cannot do automatically.
@@ -163,6 +165,15 @@ class EntityMapper
             $labelApiResource->linkedBankAccountIds[] = $bankAccountUuid->toRfc4122();
         }
 
+        foreach ($label->getChildLabels() as $childLabel) {
+            $childUuid = $childLabel->getId();
+            if ($childUuid === null) {
+                continue;
+            }
+
+            $labelApiResource->childLabelIds[] = $childUuid->toRfc4122();
+        }
+
         return $labelApiResource;
     }
 
@@ -184,6 +195,95 @@ class EntityMapper
         // Sync linked bank accounts
         $this->labelService->syncLinkedBankAccounts($label, $labelApiResource->linkedBankAccountIds);
 
+        // Sync child labels
+        $this->syncChildLabels($label, $labelApiResource->childLabelIds);
+
         return $label;
+    }
+
+    /**
+     * Sync child label relationships.
+     * Removes existing child relationships not in the provided list and adds new ones.
+     *
+     * @param array<string> $childLabelIds
+     */
+    private function syncChildLabels(Label $label, array $childLabelIds): void
+    {
+        // Get current child labels
+        $currentChildLabels = $label->getChildLabels();
+        $currentChildIds    = [];
+
+        foreach ($currentChildLabels as $childLabel) {
+            $childUuid = $childLabel->getId();
+            if ($childUuid === null) {
+                continue;
+            }
+
+            $currentChildIds[] = $childUuid->toRfc4122();
+        }
+
+        // Remove child labels that are not in the new list
+        foreach ($currentChildLabels as $childLabel) {
+            $childUuid = $childLabel->getId();
+            if (! $childUuid instanceof Uuid) {
+                continue;
+            }
+
+            if (in_array($childUuid->toRfc4122(), $childLabelIds, true)) {
+                continue;
+            }
+
+            $childLabel->setParentLabel(null);
+        }
+
+        // Add new child labels
+        foreach ($childLabelIds as $childLabelId) {
+            // Skip if already a child
+            if (in_array($childLabelId, $currentChildIds, true)) {
+                continue;
+            }
+
+            $childLabel = $this->labelRepository->find(Uuid::fromRfc4122($childLabelId));
+            if (! ($childLabel instanceof Label)) {
+                continue;
+            }
+
+            // Prevent circular references
+            if ($this->wouldCreateCircularReference($label, $childLabel)) {
+                continue;
+            }
+
+            $childLabel->setParentLabel($label);
+        }
+    }
+
+    /**
+     * Check if setting a parent-child relationship would create a circular reference.
+     */
+    private function wouldCreateCircularReference(Label $parent, Label $child): bool
+    {
+        $current = $parent;
+        $visited = [];
+
+        while ($current instanceof Label) {
+            $currentId = $current->getId();
+            if (! $currentId instanceof Uuid) {
+                break;
+            }
+
+            if (in_array($currentId->toRfc4122(), $visited, true)) {
+                return true; // Circular reference detected
+            }
+
+            $visited[] = $currentId->toRfc4122();
+
+            if ($current->getId() === $child->getId()) {
+                return true; // Would create circular reference
+            }
+
+            $current = $current->getParentLabel();
+        }
+
+        return false;
     }
 }

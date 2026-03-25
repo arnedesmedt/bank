@@ -45,6 +45,7 @@ const LabelDetailPage: React.FC = () => {
     const [editParentLabelId, setEditParentLabelId] = useState('');
     const [editLinkedBankAccountIds, setEditLinkedBankAccountIds] = useState<string[]>([]);
     const [editLinkedRegexes, setEditLinkedRegexes] = useState<string[]>([]);
+    const [editChildLabelIds, setEditChildLabelIds] = useState<string[]>([]);
     const [editRegexInput, setEditRegexInput] = useState('');
     const [editMaxValue, setEditMaxValue] = useState('');
     const [editMaxPercentage, setEditMaxPercentage] = useState('');
@@ -110,6 +111,7 @@ const LabelDetailPage: React.FC = () => {
         setEditParentLabelId(label.parentLabelId ?? '');
         setEditLinkedBankAccountIds(label.linkedBankAccountIds);
         setEditLinkedRegexes(label.linkedRegexes);
+        setEditChildLabelIds(label.childLabelIds ?? []);
         setEditRegexInput('');
         setEditMaxValue(label.maxValue ?? '');
         setEditMaxPercentage(label.maxPercentage ?? '');
@@ -140,6 +142,12 @@ const LabelDetailPage: React.FC = () => {
         );
     };
 
+    const toggleChildLabel = (childLabelId: string) => {
+        setEditChildLabelIds((prev) =>
+            prev.includes(childLabelId) ? prev.filter((x) => x !== childLabelId) : [...prev, childLabelId],
+        );
+    };
+
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!accessToken || !id || !editName.trim()) {
@@ -156,6 +164,7 @@ const LabelDetailPage: React.FC = () => {
                     parentLabelId: editParentLabelId || null,
                     linkedBankAccountIds: editLinkedBankAccountIds,
                     linkedRegexes: editLinkedRegexes,
+                    childLabelIds: editChildLabelIds,
                     maxValue: editMaxValue || null,
                     maxPercentage: editMaxPercentage || null,
                 },
@@ -366,6 +375,26 @@ const LabelDetailPage: React.FC = () => {
                                 ))}
                             </select>
                         </div>
+
+                        {allLabels.length > 0 && (
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    Child Labels (optional)
+                                </label>
+                                <div className="space-y-1 max-h-40 overflow-y-auto border border-gray-200 rounded p-2 bg-white">
+                                    {allLabels.filter((l) => l.id !== id && l.id !== editParentLabelId).map((l) => (
+                                        <label key={l.id} className="flex items-center gap-2 text-sm cursor-pointer">
+                                            <input
+                                                type="checkbox"
+                                                checked={editChildLabelIds.includes(l.id)}
+                                                onChange={() => toggleChildLabel(l.id)}
+                                            />
+                                            <span>{l.name}</span>
+                                        </label>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
 
                         {bankAccounts.length > 0 && (
                             <div>

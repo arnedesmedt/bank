@@ -11,6 +11,7 @@ export interface Label {
     name: string;
     parentLabelId: string | null;
     parentLabelName: string | null;
+    childLabelIds: string[];
     linkedBankAccountIds: string[];
     linkedRegexes: string[];
     maxValue: string | null;
