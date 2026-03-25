@@ -22,6 +22,15 @@ const Amount: React.FC<AmountProps> = ({
     currency = 'EUR',
 }) => {
     const numericValue = parseFloat(amount);
+
+    if (isNaN(numericValue)) {
+        return (
+            <span className={`font-mono font-medium text-gray-400 ${className}`} data-testid="amount">
+                —
+            </span>
+        );
+    }
+
     const isPositive = numericValue > 0;
     const isNegative = numericValue < 0;
     const isZero = numericValue === 0;

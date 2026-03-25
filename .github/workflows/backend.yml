@@ -1,0 +1,73 @@
+name: Backend CI
+
+on:
+  push:
+    branches: ["**"]
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend.yml"
+  pull_request:
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend.yml"
+
+jobs:
+  lint-and-test:
+    name: PHP Lint & Test
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: bank_test
+          POSTGRES_USER: bank_user
+          POSTGRES_PASSWORD: bank_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          extensions: pdo_pgsql, intl, zip
+          coverage: none
+
+      - name: Cache Composer packages
+        uses: actions/cache@v4
+        with:
+          path: backend/vendor
+          key: composer-${{ hashFiles('backend/composer.lock') }}
+          restore-keys: composer-
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist --optimize-autoloader
+
+      - name: PHPStan (static analysis)
+        run: vendor/bin/phpstan analyse --no-progress
+
+      - name: PHPCS (coding standards)
+        run: vendor/bin/phpcs src
+
+      - name: Run migrations
+        env:
+          DATABASE_URL: postgresql://bank_user:bank_password@127.0.0.1:5432/bank_test
+        run: php bin/console doctrine:migrations:migrate --no-interaction --env=test
+
+      - name: PHPUnit (tests)
+        env:
+          DATABASE_URL: postgresql://bank_user:bank_password@127.0.0.1:5432/bank_test
+        run: vendor/bin/phpunit --no-coverage
+

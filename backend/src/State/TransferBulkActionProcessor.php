@@ -50,9 +50,9 @@ class TransferBulkActionProcessor implements ProcessorInterface
 
         try {
             $transfers = match ($data->action) {
-                'apply_label'  => $this->applyLabel($data),
-                'remove_label' => $this->removeLabel($data),
-                'mark_refund'  => $this->markRefund($data),
+                'apply_label'   => $this->applyLabel($data),
+                'remove_label'  => $this->removeLabel($data),
+                'mark_refund'   => $this->markRefund($data),
                 'remove_refund' => $this->removeRefund($data),
                 default => throw new BadRequestHttpException('Unknown action: ' . $data->action),
             };

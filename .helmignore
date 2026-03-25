@@ -1,0 +1,8 @@
+# Helm
+*.tgz
+charts/
+secrets/
+*.secret.yaml
+*.key
+*.crt
+

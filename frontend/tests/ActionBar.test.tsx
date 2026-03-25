@@ -143,7 +143,7 @@ describe('ActionBar', () => {
         expect(screen.getByRole('button', { name: /Bulk actions/i })).toBeInTheDocument();
     });
 
-    it('shows remove refund button in bulk menu', () => {
+    it('does NOT show remove refund link in bulk menu (removed in spec 010)', () => {
         renderWithRouter(
             <ActionBar
                 filters={EMPTY_FILTERS}
@@ -153,10 +153,10 @@ describe('ActionBar', () => {
             />,
         );
         fireEvent.click(screen.getByRole('button', { name: /Bulk actions/i }));
-        expect(screen.getByText(/Remove refund link/i)).toBeInTheDocument();
+        expect(screen.queryByText(/Remove refund link/i)).not.toBeInTheDocument();
     });
 
-    it('calls onBulkAction with remove_refund on button click', () => {
+    it('does not expose remove_refund action in bulk menu', () => {
         const onBulkAction = vi.fn();
         renderWithRouter(
             <ActionBar
@@ -167,8 +167,9 @@ describe('ActionBar', () => {
             />,
         );
         fireEvent.click(screen.getByRole('button', { name: /Bulk actions/i }));
-        fireEvent.click(screen.getByText(/Remove refund link/i));
-        expect(onBulkAction).toHaveBeenCalledWith({ action: 'remove_refund' });
+        // No remove_refund button should exist in the menu
+        expect(screen.queryByText(/remove.refund/i)).not.toBeInTheDocument();
+        expect(onBulkAction).not.toHaveBeenCalled();
     });
 });
 

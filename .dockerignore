@@ -1,0 +1,14 @@
+node_modules/
+dist/
+build/
+*.log
+.env*
+coverage/
+.git/
+Dockerfile*
+.dockerignore
+*.tmp
+.swp
+.vscode/
+.idea/
+

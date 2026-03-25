@@ -14,7 +14,6 @@ use App\State\TransferImportProcessor;
 use App\State\TransferItemProvider;
 use App\State\TransferLabelProcessor;
 use App\State\TransferStateProvider;
-use DateTimeImmutable;
 
 #[ApiResource(
     shortName: 'Transfer',
@@ -59,7 +58,7 @@ class TransferApiResource
 
     public string $amount;
 
-    public DateTimeImmutable $date;
+    public string $date;
 
     public string|null $fromAccountId = null;
 
@@ -96,4 +95,15 @@ class TransferApiResource
     public array $labelLinks = [];
 
     public string|null $parentTransferId = null;
+
+    #[ApiProperty(description: 'Original amount before any refunds were subtracted. Null if no refunds linked.')]
+    public string|null $amountBeforeRefund = null;
+
+    /**
+     * UUIDs of child (refund) transfers linked to this parent transfer.
+     *
+     * @var array<string>
+     */
+    #[ApiProperty(description: 'UUIDs of refund transfers linked as children of this transfer.')]
+    public array $childRefundIds = [];
 }

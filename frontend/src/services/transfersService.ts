@@ -11,6 +11,7 @@ export interface LabelLink {
 export interface Transfer {
     id: string;
     amount: string;
+    amountBeforeRefund: string | null;
     date: string;
     fromAccountId: string | null;
     fromAccountNumber: string | null;
@@ -26,9 +27,11 @@ export interface Transfer {
     labelNames: string[];
     labelLinks: LabelLink[];
     parentTransferId: string | null;
+    childRefundIds: string[];
 }
 
 export interface TransferFilters {
+    page?: number;
     search?: string;
     dateFrom?: string;
     dateTo?: string;

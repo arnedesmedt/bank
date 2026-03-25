@@ -18,12 +18,7 @@ use function json_encode;
 /**
  * Tests for PATCH /api/transfers/bulk — bulk action endpoint.
  *
- * Covers T019, T020, T024, T025 (US2):
- * - apply_label
- * - remove_label
- * - mark_refund
- * - remove_refund
- * - Edge cases: invalid action, empty transferIds, missing labelId
+ * Covers apply_label, remove_label, mark_refund, remove_refund and edge cases.
  */
 class TransferBulkActionTest extends BankApiTestCase
 {
@@ -139,25 +134,45 @@ class TransferBulkActionTest extends BankApiTestCase
         $this->assertSame((string) $parentUuid, $firstRow['parentTransferId']);
     }
 
-    public function testBulkRemoveRefundClearsParentTransfer(): void
+    public function testBulkRemoveRefundUnlinksChildFromParent(): void
     {
         $bankAccount = $this->createTestAccount();
         $transfer    = TransferFactory::createOne([
             'fromAccount' => $bankAccount,
             'toAccount'   => $bankAccount,
+            'amount'      => '100.00',
         ]);
         $child       = TransferFactory::createOne([
-            'fromAccount'    => $bankAccount,
-            'toAccount'      => $bankAccount,
-            'parentTransfer' => $transfer,
+            'fromAccount' => $bankAccount,
+            'toAccount'   => $bankAccount,
+            'amount'      => '-25.00',
         ]);
 
         $token  = $this->getToken();
         $client = static::createClient();
 
-        $childUuid = $child->getId();
+        $parentUuid = $transfer->getId();
+        $childUuid  = $child->getId();
+
+        $this->assertNotNull($parentUuid);
         $this->assertNotNull($childUuid);
 
+        // First link the child to the parent
+        $client->request('PATCH', '/api/transfers/bulk', [
+            'headers' => [
+                'Authorization' => 'Bearer ' . $token,
+                'Content-Type'  => 'application/merge-patch+json',
+                'Accept'        => 'application/json',
+            ],
+            'body' => json_encode([
+                'action'           => 'mark_refund',
+                'transferIds'      => [(string) $childUuid],
+                'parentTransferId' => (string) $parentUuid,
+            ]),
+        ]);
+        $this->assertResponseIsSuccessful();
+
+        // Now remove the refund link
         $client->request('PATCH', '/api/transfers/bulk', [
             'headers' => [
                 'Authorization' => 'Bearer ' . $token,
@@ -176,6 +191,7 @@ class TransferBulkActionTest extends BankApiTestCase
         $data = json_decode($response->getContent(), true);
         assert(is_array($data));
 
+        // The child is returned with its parentTransferId cleared
         $this->assertCount(1, $data);
         $firstRow = $data[0];
         assert(is_array($firstRow));
@@ -194,7 +210,7 @@ class TransferBulkActionTest extends BankApiTestCase
                 'Accept'        => 'application/json',
             ],
             'body' => json_encode([
-                'action'      => 'remove_refund',
+                'action'      => 'apply_label',
                 'transferIds' => [],
             ]),
         ]);

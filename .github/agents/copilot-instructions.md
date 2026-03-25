@@ -32,9 +32,9 @@ tests/
 : Follow standard conventions
 
 ## Recent Changes
+- 010-refund-linking-improvements: Added [if applicable, e.g., PostgreSQL, CoreData, files or N/A]
 - 009-action-bar-improvements: Added [if applicable, e.g., PostgreSQL, CoreData, files or N/A]
 - 008-todo-list-updates: Added PHP 8.5 (backend), TypeScript 5.9 (frontend) + Symfony 8, API Platform 3, Doctrine ORM, React 19, Vite 7, TailwindCSS 4
-- 007-transfer-page-routing: Added [if applicable, e.g., PostgreSQL, CoreData, files or N/A]
 
 
 <!-- MANUAL ADDITIONS START -->

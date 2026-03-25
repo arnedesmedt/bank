@@ -18,6 +18,8 @@ use InvalidArgumentException;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Uid\Uuid;
 
+use function assert;
+use function bcadd;
 use function bcsub;
 use function ltrim;
 
@@ -209,6 +211,11 @@ class TransferService
 
     /**
      * Mark multiple transfers as refunds of a parent transfer.
+     * - Saves amountBeforeRefund on first link.
+     * - Recalculates parent amount = amountBeforeRefund - sum(child amounts).
+     * - Supports re-linking: if a child already has a different parent, it is
+     *   detached from the old parent (old parent amount is restored) and linked here.
+     * - Validates: no self-link, no duplicate link to the same parent.
      *
      * @param array<string> $transferIds
      *
@@ -221,10 +228,20 @@ class TransferService
             throw new InvalidArgumentException('Parent transfer not found: ' . $parentTransferId);
         }
 
+        // Snapshot original amount before any refunds were ever applied
+        if ($parentTransfer->getAmountBeforeRefund() === null) {
+            $parentTransfer->setAmountBeforeRefund($parentTransfer->getAmount());
+        }
+
+        $originalAmount = $parentTransfer->getAmountBeforeRefund();
+        assert($originalAmount !== null);
+
         $updated = [];
         foreach ($transferIds as $transferId) {
             if ($transferId === $parentTransferId) {
-                continue; // Cannot be its own parent
+                $msg = 'Refund link skipped: transfer cannot be its own parent';
+                $this->logger->warning($msg, ['transferId' => $transferId]);
+                continue;
             }
 
             $transfer = $this->transferRepository->find(Uuid::fromRfc4122($transferId));
@@ -232,8 +249,101 @@ class TransferService
                 continue;
             }
 
-            $transfer->setParentTransfer($parentTransfer);
+            $existingParent = $transfer->getParentTransfer();
+
+            // Already a child of THIS parent — no change needed
+            if ($existingParent instanceof Transfer && (string) $existingParent->getId() === $parentTransferId) {
+                $this->logger->info('Refund link skipped: already a child of this parent', [
+                    'transferId'      => $transferId,
+                    'parentTransferId' => $parentTransferId,
+                ]);
+                continue;
+            }
+
+            // Detach from old parent and restore its amount
+            if ($existingParent instanceof Transfer) {
+                $this->logger->info('Re-linking refund: detaching from old parent', [
+                    'transferId'       => $transferId,
+                    'oldParentId'      => $existingParent->getId()?->toRfc4122(),
+                    'newParentId'      => $parentTransferId,
+                ]);
+                $existingParent->removeChildRefund($transfer);
+                $this->restoreParentAmount($existingParent);
+            }
+
+            // Use addChildRefund so the in-memory childRefunds collection on the parent
+            // is immediately updated — otherwise getChildRefunds() (called below to
+            // recalculate the new amount) would miss the newly-added children.
+            $parentTransfer->addChildRefund($transfer);
             $updated[] = $transfer;
+
+            $this->logger->info('Refund linked to parent transfer', [
+                'refundTransferId' => $transferId,
+                'parentTransferId' => $parentTransferId,
+                'refundAmount'     => $transfer->getAmount(),
+            ]);
+        }
+
+        // Recalculate new parent amount: originalAmount + sum of all child amounts (children are negative)
+        $newAmount = $originalAmount;
+        foreach ($parentTransfer->getChildRefunds() as $childRefund) {
+            $newAmount = bcadd($newAmount, $childRefund->getAmount(), 2);
+        }
+
+        $this->logger->info('Parent transfer amount recalculated after refund linking', [
+            'parentTransferId'   => $parentTransferId,
+            'originalAmount'     => $originalAmount,
+            'recalculatedAmount' => $newAmount,
+            'refundCount'        => $parentTransfer->getChildRefunds()->count(),
+        ]);
+
+        $parentTransfer->setAmount($newAmount);
+
+        $this->entityManager->flush();
+
+        return $updated;
+    }
+
+    /**
+     * Remove refund links from child transfers, restoring their parent's amount.
+     * Transfers that are not a refund child are silently skipped.
+     * If all children of a parent are removed, the parent amount is fully restored
+     * and amountBeforeRefund is cleared.
+     *
+     * @param array<string> $transferIds
+     *
+     * @return array<Transfer>
+     */
+    public function bulkRemoveRefund(array $transferIds): array
+    {
+        /** @var array<string, Transfer> $parentsToRestore */
+        $parentsToRestore = [];
+        $updated          = [];
+
+        foreach ($transferIds as $transferId) {
+            $transfer = $this->transferRepository->find(Uuid::fromRfc4122($transferId));
+            if (! $transfer instanceof Transfer) {
+                continue;
+            }
+
+            $parent = $transfer->getParentTransfer();
+            if (! $parent instanceof Transfer) {
+                $this->logger->info('Remove refund skipped: transfer has no parent', ['transferId' => $transferId]);
+                continue;
+            }
+
+            $parent->removeChildRefund($transfer);
+            $parentsToRestore[(string) $parent->getId()] = $parent;
+            $updated[]                                   = $transfer;
+
+            $this->logger->info('Refund link removed from transfer', [
+                'transferId' => $transferId,
+                'parentId'   => (string) $parent->getId(),
+            ]);
+        }
+
+        foreach ($parentsToRestore as $parentToRestore) {
+            $this->restoreParentAmount($parentToRestore);
         }
 
         $this->entityManager->flush();
@@ -242,27 +352,30 @@ class TransferService
     }
 
     /**
-     * Remove refund link from multiple transfers (orphan refunds gracefully).
-     *
-     * @param array<string> $transferIds
-     *
-     * @return array<Transfer>
+     * Restore a parent transfer's amount from its amountBeforeRefund snapshot,     *
+     * then subtract all remaining children.
+     * Called when a child is detached from this parent.
      */
-    public function bulkRemoveRefund(array $transferIds): array
+    private function restoreParentAmount(Transfer $transfer): void
     {
-        $updated = [];
-        foreach ($transferIds as $transferId) {
-            $transfer = $this->transferRepository->find(Uuid::fromRfc4122($transferId));
-            if (! $transfer instanceof Transfer) {
-                continue;
-            }
-
-            $transfer->setParentTransfer(null);
-            $updated[] = $transfer;
+        $original = $transfer->getAmountBeforeRefund();
+        if ($original === null) {
+            return; // Nothing to restore
         }
 
-        $this->entityManager->flush();
+        $restored = $original;
+        foreach ($transfer->getChildRefunds() as $childRefund) {
+            $restored = bcadd($restored, $childRefund->getAmount(), 2);
+        }
 
-        return $updated;
+        // If no children remain, clear the snapshot so it can be re-set cleanly next time
+        if (! $transfer->getChildRefunds()->isEmpty()) {
+            $transfer->setAmount($restored);
+
+            return;
+        }
+
+        $transfer->setAmount($original);
+        $transfer->setAmountBeforeRefund(null);
     }
 }

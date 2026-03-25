@@ -13,7 +13,7 @@ React + TypeScript SPA for the bank application, built with Vite and TailwindCSS
 
 | Page | Route | Description |
 |------|-------|-------------|
-| Transfers | *(default)* | Import CSV files, manage labels, and view the transfer list |
+| Transfers | *(default)* | Import CSV files, manage labels, and view the transfer list with refund linking |
 | Bank Accounts | `/bank-accounts` | Read-only list of all bank accounts (populated via CSV import) |
 | Labels | `/labels` | Read-only list of all labels with parent hierarchy and linked accounts |
 
@@ -28,18 +28,35 @@ src/
 │   ├── BankAccountsListPage.tsx
 │   └── LabelsListPage.tsx
 ├── components/       # Reusable UI components
+│   ├── ActionBar.tsx         # Filter bar + bulk action panel (Label/Refund)
+│   ├── Amount.tsx            # Formatted amount display
 │   ├── BankAccountRow.tsx
 │   ├── EmptyOrErrorState.tsx
 │   ├── LabelRow.tsx
 │   ├── LabelManager.tsx
 │   ├── TransferImport.tsx
-│   └── TransferList.tsx
+│   └── TransferList.tsx      # Transfer table with accordion refund children
 ├── services/         # API client layer
 │   ├── apiClient.ts          # Shared authenticated fetch helper
 │   ├── bankAccountsService.ts
-│   └── labelsService.ts
-tests/                    # Vitest unit/component tests
+│   ├── labelsService.ts
+│   └── transfersService.ts   # Transfer CRUD, bulk actions, group-by
+tests/                        # Vitest unit/component tests
 ```
+
+## Refund Linking
+
+Transfers can be linked as refunds of a parent transfer. The workflow:
+
+1. Select **exactly one** transfer in the list — the "Link Refunds" button appears in the floating action panel.
+2. Click **Link Refunds** — a modal opens listing all eligible transfers (not yet linked, not the parent itself).
+3. Select one or more refund transfers. The modal preview shows the refund sum and the new parent amount.
+4. Click **Link _N_ refunds** — the backend records the relationship, updates the parent amount, and the list refreshes.
+
+In the transfer list:
+- Parent transfers show their current (post-refund) amount; the original amount is shown in strikethrough below it.
+- Refund children are displayed indented under their parent (accordion-style, collapsible).
+- Each child row carries a **Refund** badge.
 
 ## API Integration
 
@@ -52,10 +69,7 @@ Every request is authenticated with the Bearer token from `AuthContext`.
 | `GET /api/labels` | LabelsListPage |
 | `GET /api/transfers` | TransferList |
 | `POST /api/transfers/import` | TransferImport |
-
-> Bank accounts and labels are created as a side-effect of the CSV import feature
-> (see `specs/001-csv-import-transfers`). The list pages here are read-only views
-> of that data.
+| `PATCH /api/transfers/bulk` | TransferList (label bulk, refund linking) |
 
 ## Getting Started
 

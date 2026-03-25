@@ -37,7 +37,7 @@ class EntityMapper
 
         $transferApiResource->id     = $uuid->toRfc4122();
         $transferApiResource->amount = $transfer->getAmount();
-        $transferApiResource->date   = $transfer->getDate();
+        $transferApiResource->date   = $transfer->getDate()->format('Y-m-d');
 
         $fromAccountId                          = $transfer->getFromAccount()->getId();
         $transferApiResource->fromAccountId     = $fromAccountId?->toRfc4122();
@@ -76,6 +76,17 @@ class EntityMapper
             if ($parentUuid instanceof Uuid) {
                 $transferApiResource->parentTransferId = $parentUuid->toRfc4122();
             }
+        }
+
+        $transferApiResource->amountBeforeRefund = $transfer->getAmountBeforeRefund();
+
+        foreach ($transfer->getChildRefunds() as $childRefund) {
+            $childUuid = $childRefund->getId();
+            if (! ($childUuid instanceof Uuid)) {
+                continue;
+            }
+
+            $transferApiResource->childRefundIds[] = $childUuid->toRfc4122();
         }
 
         return $transferApiResource;

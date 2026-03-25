@@ -58,6 +58,36 @@ Importing is idempotent — already-imported transfers are skipped based on fing
 | `GET` | `/api/transfers` | List transfers (paginated) for the authenticated user |
 | `GET` | `/api/transfers/{id}` | Get a single transfer |
 | `POST` | `/api/transfers/import` | Import a CSV file (`multipart/form-data`: `file`, `bankType`) |
+| `POST` | `/api/transfers/{id}/labels/{labelId}` | Add a label to a transfer |
+| `DELETE` | `/api/transfers/{id}/labels/{labelId}` | Remove a label from a transfer |
+| `PATCH` | `/api/transfers/bulk` | Bulk action on selected transfers (`apply_label`, `remove_label`, `mark_refund`) |
+
+#### Bulk Actions
+
+`PATCH /api/transfers/bulk` accepts a JSON body:
+
+```json
+{
+  "action": "mark_refund",
+  "transferIds": ["uuid-of-refund-1", "uuid-of-refund-2"],
+  "parentTransferId": "uuid-of-parent"
+}
+```
+
+| Action | Required fields | Description |
+|--------|----------------|-------------|
+| `apply_label` | `labelId` | Apply a label to all selected transfers |
+| `remove_label` | `labelId` | Remove a label from all selected transfers |
+| `mark_refund` | `parentTransferId` | Link selected transfers as refunds of the parent transfer. The parent's `amount` is recalculated (original amount − sum of refunds) and `amount_before_refund` is saved for auditability. |
+
+#### Refund Linking
+
+When a transfer is linked as a refund child of a parent:
+
+- The first link snapshot the parent's current `amount` in `amount_before_refund` for auditability.
+- The parent's `amount` is recalculated as `amount_before_refund − Σ(child amounts)` after every link operation.
+- Validation prevents self-linking and re-linking already-linked children.
+- All operations are logged at `info`/`warning` level.
 
 ## Architecture
 

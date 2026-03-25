@@ -23,6 +23,24 @@ use function ltrim;
 #[ORM\Index(name: 'idx_date', columns: ['date'])]
 class Transfer
 {
+            /** @return numeric-string|null */
+    public function getAmountBeforeRefund(): string|null
+    {
+        return $this->amountBeforeRefund;
+    }
+
+            /**
+             * @param numeric-string|null $amountBeforeRefund
+             *
+             * @return $this
+             */
+    public function setAmountBeforeRefund(string|null $amountBeforeRefund): self
+    {
+        $this->amountBeforeRefund = $amountBeforeRefund;
+
+        return $this;
+    }
+
     #[ORM\Id]
     #[ORM\Column(type: 'uuid', unique: true)]
     #[ORM\GeneratedValue(strategy: 'CUSTOM')]
@@ -32,6 +50,15 @@ class Transfer
     /** @var numeric-string */
     #[ORM\Column(type: 'decimal', precision: 10, scale: 2)]
     private string $amount;
+
+    /**
+     * The original amount before any refunds are subtracted.
+     * Used for accurate refund linking and display.
+     *
+     * @var numeric-string|null
+     */
+    #[ORM\Column(type: 'decimal', precision: 10, scale: 2, nullable: true)]
+    private string|null $amountBeforeRefund = null;
 
     #[ORM\Column(type: 'datetime_immutable')]
     private DateTimeImmutable $date;
