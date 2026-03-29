@@ -7,6 +7,7 @@ namespace App\Repository;
 use App\Entity\Label;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
+use Override;
 
 /** @extends ServiceEntityRepository<Label> */
 class LabelRepository extends ServiceEntityRepository
@@ -17,6 +18,7 @@ class LabelRepository extends ServiceEntityRepository
     }
 
     /** @return array<Label> */
+    #[Override]
     public function findAll(): array
     {
         return $this->findBy([], ['name' => 'ASC']);

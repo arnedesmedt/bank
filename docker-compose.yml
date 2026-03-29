@@ -19,6 +19,32 @@ services:
             timeout: 5s
             retries: 5
 
+    # Migration Service
+    migrate:
+        build:
+            context: ./backend
+            dockerfile: docker/Dockerfile
+        container_name: bank_migrate
+        volumes:
+            - ./backend:/var/www/html
+        networks:
+            - bank_network
+        depends_on:
+            db:
+                condition: service_healthy
+        env_file:
+            - ./backend/.env
+        command: >
+            sh -c "
+            echo 'Running database migrations...' &&
+            php bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration &&
+            echo 'Loading development fixtures...' &&
+            php bin/console doctrine:fixtures:load --no-interaction &&
+            php bin/console foundry:load-stories --no-interaction --append &&
+            echo 'Database setup completed successfully!'
+            "
+        restart: "no"
+
     # PHP Backend
     php:
         build:
@@ -34,8 +60,32 @@ services:
         depends_on:
             db:
                 condition: service_healthy
+            migrate:
+                condition: service_completed_successfully
         env_file:
             - ./backend/.env
+
+    # PHP Worker for Symfony Messenger
+    worker:
+        build:
+            context: ./backend
+            dockerfile: docker/Dockerfile
+        container_name: bank_worker
+        volumes:
+            - ./backend:/var/www/html
+            - ./backend/docker/xdebug.ini:/usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini
+            - ./.git:/var/www/html/.git:ro
+        networks:
+            - bank_network
+        depends_on:
+            db:
+                condition: service_healthy
+            migrate:
+                condition: service_completed_successfully
+        env_file:
+            - ./backend/.env
+        command: php bin/console messenger:consume async -vv
+        restart: unless-stopped
 
     # Nginx Web Server
     nginx:

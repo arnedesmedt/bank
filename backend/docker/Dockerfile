@@ -27,6 +27,9 @@ RUN apk add --no-cache $PHPIZE_DEPS \
 # Copy Xdebug configuration
 COPY docker/xdebug.ini /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini
 
+# Copy custom PHP configuration for upload limits
+COPY docker/php.ini /usr/local/etc/php/conf.d/custom-php.ini
+
 # Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
