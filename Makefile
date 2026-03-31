@@ -3,7 +3,7 @@
 MAKEFILE_PATH := $(abspath $(lastword $(MAKEFILE_LIST)))
 ROOT_DIR := $(shell dirname "$(shell readlink -f "$(MAKEFILE_PATH)" 2>/dev/null || echo "$(MAKEFILE_PATH)")")
 
-.PHONY: help up up-no-migrate down restart logs shell-php shell-frontend shell-db shell-worker test lint migrate-test messenger-consume messenger-failed-show messenger-failed-retry messenger-failed-reset worker-restart migrate-run migrate-service db-backup db-restore
+.PHONY: help up up-no-migrate down restart logs shell-php shell-frontend shell-db shell-worker test lint migrate-test messenger-consume messenger-failed-show messenger-failed-retry messenger-failed-reset worker-restart migrate-run migrate-service db-backup db-restore fixtures-load fixtures-service
 
 help: ## Show this help message
 	@echo 'Usage: make [target]'
@@ -74,10 +74,16 @@ format-frontend: ## Format frontend code
 migrate: ## Run database migrations
 	cd $(ROOT_DIR) && docker compose exec -e XDEBUG_MODE=off php bin/console doctrine:migrations:migrate --no-interaction
 
-migrate-run: ## Run migration service manually (includes migrations and fixtures)
+migrate-run: ## Run migration service manually (includes migrations only)
 	cd $(ROOT_DIR) && docker compose up migrate --remove-orphans
 
-migrate-service: ## Start migration service only (includes migrations and fixtures)
+fixtures-load: ## Load development fixtures (same as fixtures-service)
+	cd $(ROOT_DIR) && docker compose up fixtures --remove-orphans
+
+fixtures-service: ## Start fixtures service only (loads development fixtures)
+	cd $(ROOT_DIR) && docker compose up -d fixtures
+
+migrate-service: ## Start migration service only (includes migrations only)
 	cd $(ROOT_DIR) && docker compose up -d migrate
 
 migrate-create: ## Create a new migration
