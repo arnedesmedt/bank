@@ -9,6 +9,7 @@ interface LabelLink {
     id: string;
     name: string;
     isManual: boolean;
+    isArchived: boolean;
 }
 
 interface Transfer {
@@ -51,6 +52,7 @@ const TransferDetailPage: React.FC = () => {
     const [assigning, setAssigning] = useState(false);
     const [assignError, setAssignError] = useState<string | null>(null);
     const [removingLabelId, setRemovingLabelId] = useState<string | null>(null);
+    const [archivingLabelId, setArchivingLabelId] = useState<string | null>(null);
 
     // Quick-create label modal
     const [showCreateLabel, setShowCreateLabel] = useState(false);
@@ -187,6 +189,58 @@ const TransferDetailPage: React.FC = () => {
             setCreateLabelError(err instanceof Error ? err.message : 'Failed to create label');
         } finally {
             setCreatingLabel(false);
+        }
+    };
+
+    const handleArchiveLabel = async (labelLinkId: string) => {
+        if (!accessToken) return;
+        
+        setArchivingLabelId(labelLinkId);
+        try {
+            const response = await fetch(`${API_URL}/api/label-transfer-links/${labelLinkId}/archive`, {
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                },
+            });
+            
+            if (!response.ok) {
+                const err = (await response.json()) as { detail?: string };
+                throw new Error(err.detail ?? 'Failed to archive label');
+            }
+            
+            // Refresh transfer data to show updated state
+            await loadTransfer();
+        } catch (err) {
+            console.error('Failed to archive label:', err);
+        } finally {
+            setArchivingLabelId(null);
+        }
+    };
+
+    const handleUnarchiveLabel = async (labelLinkId: string) => {
+        if (!accessToken) return;
+        
+        setArchivingLabelId(labelLinkId);
+        try {
+            const response = await fetch(`${API_URL}/api/label-transfer-links/${labelLinkId}/unarchive`, {
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                },
+            });
+            
+            if (!response.ok) {
+                const err = (await response.json()) as { detail?: string };
+                throw new Error(err.detail ?? 'Failed to unarchive label');
+            }
+            
+            // Refresh transfer data to show updated state
+            await loadTransfer();
+        } catch (err) {
+            console.error('Failed to unarchive label:', err);
+        } finally {
+            setArchivingLabelId(null);
         }
     };
 
@@ -344,7 +398,9 @@ const TransferDetailPage: React.FC = () => {
                             <div
                                 key={link.id}
                                 className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium ${
-                                    link.isManual
+                                    link.isArchived
+                                        ? 'bg-gray-100 text-gray-600 line-through'
+                                        : link.isManual
                                         ? 'bg-purple-100 text-purple-800'
                                         : 'bg-blue-100 text-blue-800'
                                 }`}
@@ -354,7 +410,7 @@ const TransferDetailPage: React.FC = () => {
                                     className="hover:underline"
                                     title="View label"
                                 >
-                                    {link.isManual ? '🖊 ' : '⚙ '}
+                                    {link.isArchived ? '📦 ' : link.isManual ? '🖊 ' : '⚙ '}
                                     {link.name}
                                 </button>
                                 {link.isManual && (
@@ -365,6 +421,26 @@ const TransferDetailPage: React.FC = () => {
                                         className="ml-1 opacity-60 hover:opacity-100 font-bold text-lg leading-none"
                                     >
                                         {removingLabelId === link.id ? '…' : '×'}
+                                    </button>
+                                )}
+                                {!link.isManual && (
+                                    <button
+                                        onClick={() => link.isArchived 
+                                            ? void handleUnarchiveLabel(link.id)
+                                            : void handleArchiveLabel(link.id)
+                                        }
+                                        disabled={archivingLabelId === link.id}
+                                        aria-label={link.isArchived 
+                                            ? `Unarchive label ${link.name}`
+                                            : `Archive label ${link.name}`
+                                        }
+                                        className="ml-1 opacity-60 hover:opacity-100 font-bold text-lg leading-none"
+                                        title={link.isArchived 
+                                            ? 'Unarchive this label to allow re-assignment'
+                                            : 'Archive this label to prevent re-assignment'
+                                        }
+                                    >
+                                        {archivingLabelId === link.id ? '…' : link.isArchived ? '↩' : '📦'}
                                     </button>
                                 )}
                             </div>

@@ -42,6 +42,7 @@ class LabelTransferLinkRepository extends ServiceEntityRepository
         /** @var array<LabelTransferLink> $result */
         $result = $this->createQueryBuilder('ltl')
             ->andWhere('ltl.transfer = :transfer')
+            ->andWhere('ltl.isArchived = false')
             ->setParameter('transfer', $transfer)
             ->getQuery()
             ->getResult();
@@ -55,6 +56,7 @@ class LabelTransferLinkRepository extends ServiceEntityRepository
         /** @var array<LabelTransferLink> $result */
         $result = $this->createQueryBuilder('ltl')
             ->andWhere('ltl.label = :label')
+            ->andWhere('ltl.isArchived = false')
             ->setParameter('label', $label)
             ->getQuery()
             ->getResult();
@@ -69,6 +71,47 @@ class LabelTransferLinkRepository extends ServiceEntityRepository
         $result = $this->createQueryBuilder('ltl')
             ->andWhere('ltl.label = :label')
             ->andWhere('ltl.isManual = false')
+            ->andWhere('ltl.isArchived = false')
+            ->setParameter('label', $label)
+            ->getQuery()
+            ->getResult();
+
+        return $result;
+    }
+
+    /** @return array<LabelTransferLink> */
+    public function findActiveByLabel(Label $label): array
+    {
+        /** @var array<LabelTransferLink> $result */
+        $result = $this->createQueryBuilder('ltl')
+            ->andWhere('ltl.label = :label')
+            ->andWhere('ltl.isArchived = false')
+            ->setParameter('label', $label)
+            ->getQuery()
+            ->getResult();
+
+        return $result;
+    }
+
+    /** @return array<LabelTransferLink> */
+    public function findAllByTransfer(Transfer $transfer): array
+    {
+        /** @var array<LabelTransferLink> $result */
+        $result = $this->createQueryBuilder('ltl')
+            ->andWhere('ltl.transfer = :transfer')
+            ->setParameter('transfer', $transfer)
+            ->getQuery()
+            ->getResult();
+
+        return $result;
+    }
+
+    /** @return array<LabelTransferLink> */
+    public function findAllByLabel(Label $label): array
+    {
+        /** @var array<LabelTransferLink> $result */
+        $result = $this->createQueryBuilder('ltl')
+            ->andWhere('ltl.label = :label')
             ->setParameter('label', $label)
             ->getQuery()
             ->getResult();

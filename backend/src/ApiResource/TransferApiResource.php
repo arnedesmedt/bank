@@ -87,10 +87,12 @@ class TransferApiResource
     public array $labelNames = [];
 
     /**
-     * Label links with manual/automatic flag.
-     * Each entry: {id: string, name: string, isManual: bool}
+     * Label links with manual/automatic/archived flags.
+     * Each entry: {id: string, name: string, isManual: bool, isArchived: bool}
+     * Note: The 'id' field contains the LabelTransferLink UUID, not the Label UUID.
+     * Archived links appear here for UI management but are excluded from labelIds/labelNames.
      *
-     * @var array<array{id: string, name: string, isManual: bool}>
+     * @var array<array{id: string, name: string, isManual: bool, isArchived: bool}>
      */
     public array $labelLinks = [];
 

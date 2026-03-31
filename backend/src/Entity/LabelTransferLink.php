@@ -40,6 +40,10 @@ class LabelTransferLink
     #[ORM\Column(type: 'boolean')]
     private bool $isManual = false;
 
+    /** true = archived to prevent re-assignment by auto-labeling; false = active */
+    #[ORM\Column(type: 'boolean')]
+    private bool $isArchived = false;
+
     public function getId(): Uuid|null
     {
         return $this->uuid;
@@ -77,6 +81,18 @@ class LabelTransferLink
     public function setIsManual(bool $isManual): self
     {
         $this->isManual = $isManual;
+
+        return $this;
+    }
+
+    public function isArchived(): bool
+    {
+        return $this->isArchived;
+    }
+
+    public function setIsArchived(bool $isArchived): self
+    {
+        $this->isArchived = $isArchived;
 
         return $this;
     }

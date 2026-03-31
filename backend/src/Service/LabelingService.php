@@ -10,6 +10,7 @@ use App\Entity\Transfer;
 use App\Repository\LabelRepository;
 use App\Repository\LabelTransferLinkRepository;
 use App\Repository\TransferRepository;
+use InvalidArgumentException;
 use Symfony\Component\Uid\Uuid;
 
 use function array_any;
@@ -169,6 +170,29 @@ class LabelingService
     }
 
     /**
+     * Archive a label transfer link to prevent re-assignment by auto-labeling.
+     * Only automatic links can be archived.
+     */
+    public function archiveLabelTransferLink(LabelTransferLink $labelTransferLink): void
+    {
+        if ($labelTransferLink->isManual()) {
+            throw new InvalidArgumentException('Manual links cannot be archived');
+        }
+
+        $labelTransferLink->setIsArchived(true);
+        $this->labelTransferLinkRepository->save($labelTransferLink, true);
+    }
+
+    /**
+     * Unarchive a label transfer link to allow re-assignment by auto-labeling.
+     */
+    public function unarchiveLabelTransferLink(LabelTransferLink $labelTransferLink): void
+    {
+        $labelTransferLink->setIsArchived(false);
+        $this->labelTransferLinkRepository->save($labelTransferLink, true);
+    }
+
+    /**
      * Re-evaluate automatic links for all transfers affected by a bank account change.
      *
      * @param array<Label> $affectedLabels
@@ -238,6 +262,11 @@ class LabelingService
         $existingLink = $this->labelTransferLinkRepository->findByLabelAndTransfer($label, $transfer);
 
         if ($existingLink instanceof LabelTransferLink) {
+            // If the link is archived, don't reactivate it unless it's being upgraded to manual
+            if ($existingLink->isArchived() && ! $isManual) {
+                return;
+            }
+
             if ($isManual && ! $existingLink->isManual()) {
                 $existingLink->setIsManual(true);
                 $this->labelTransferLinkRepository->save($existingLink);
@@ -262,7 +291,7 @@ class LabelingService
     {
         $link = $this->labelTransferLinkRepository->findByLabelAndTransfer($label, $transfer);
 
-        if (! $link instanceof LabelTransferLink || $link->isManual()) {
+        if (! $link instanceof LabelTransferLink || $link->isManual() || $link->isArchived()) {
             return;
         }
 

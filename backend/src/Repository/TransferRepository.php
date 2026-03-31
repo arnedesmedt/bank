@@ -322,6 +322,7 @@ class TransferRepository extends ServiceEntityRepository
             $queryBuilder->join('t.labelTransferLinks', 'ltl')
                 ->join('ltl.label', 'lbl')
                 ->andWhere('lbl.uuid IN (:labelIds)')
+                ->andWhere('ltl.isArchived = false')
                 ->setParameter('labelIds', $labelIds);
         }
 
