@@ -12,7 +12,7 @@ import { ResponsiveBar } from '@nivo/bar';
 /** Matches Nivo's internal BarDatum constraint: values must be string | number */
 type NivoBarDatum = { [key: string]: string | number };
 
-const EMPTY_FILTERS: TransferFilters = { search: '', dateFrom: '', dateTo: '', labelIds: [] };
+const EMPTY_FILTERS: TransferFilters = { search: '', dateFrom: '', dateTo: '', labelIds: [], accountIds: [] };
 
 type GroupByMode = 'period' | 'label' | 'label_and_period';
 type PeriodMode = 'month' | 'quarter' | 'year';

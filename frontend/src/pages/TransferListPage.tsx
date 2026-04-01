@@ -2,13 +2,14 @@ import React, { useEffect, useState } from 'react';
 import { fetchBankAccounts } from '../services/bankAccountsService';
 import type { BankAccount } from '../services/bankAccountsService';
 import type { Label } from '../services/labelsService';
-import type { TransferFilters, BulkAction, AccountOption } from '../components/ActionBar';
+import type { BulkAction, AccountOption } from '../components/ActionBar';
 import { useNotifications } from '../components/NotificationProvider';
 import { useAuth } from '../contexts/AuthContext';
 import { ActionBar } from '../components/ActionBar';
 import { TransferList } from '../components/TransferList';
 import { TransferImport, type ImportResult } from '../components/TransferImport';
 import { fetchLabels } from '../services/labelsService';
+import { usePersistedFilters } from '../hooks/usePersistedFilters';
 
 /**
  * TransferListPage — wraps TransferList with an ActionBar with full filter support.
@@ -17,20 +18,12 @@ import { fetchLabels } from '../services/labelsService';
  * - Multi-select + bulk actions
  */
 
-const EMPTY_FILTERS: TransferFilters = { 
-    search: '', 
-    dateFrom: '', 
-    dateTo: '', 
-    labelIds: [], 
-    accountIds: [] 
-};
-
 const TransferListPage: React.FC = () => {
     const { addNotification } = useNotifications();
     const { accessToken } = useAuth();
     const [showImportModal, setShowImportModal] = useState(false);
     const [refreshKey, setRefreshKey] = useState(0);
-    const [filters, setFilters] = useState<TransferFilters>(EMPTY_FILTERS);
+    const [filters, setFilters] = usePersistedFilters();
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
     const [internalAccounts, setInternalAccounts] = useState<BankAccount[]>([]);
     const [labels, setLabels] = useState<Label[]>([]);
