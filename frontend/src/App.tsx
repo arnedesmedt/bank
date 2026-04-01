@@ -140,11 +140,21 @@ function AppContent() {
                 footerPages={footerPages}
                 currentPage={currentPage}
                 onNavigate={(id: string) => {
-                    if (id === 'transfers') navigate('/transfers');
-                    else if (id === 'bank-accounts') navigate('/accounts');
-                    else if (id === 'labels') navigate('/labels');
-                    else if (id === 'group-by') navigate('/group-by');
-                    else if (id === 'settings') navigate('/settings');
+                    // Force navigation to overview pages even when on detail pages
+                    if (id === 'transfers') {
+                        // Always navigate to transfers overview
+                        navigate('/transfers', { replace: true });
+                    } else if (id === 'bank-accounts') {
+                        // Always navigate to accounts overview
+                        navigate('/accounts', { replace: true });
+                    } else if (id === 'labels') {
+                        // Always navigate to labels overview  
+                        navigate('/labels', { replace: true });
+                    } else if (id === 'group-by') {
+                        navigate('/group-by', { replace: true });
+                    } else if (id === 'settings') {
+                        navigate('/settings', { replace: true });
+                    }
                     // Auto-close sidebar on mobile after navigation
                     if (window.innerWidth < 1024) setSidebarExpanded(false);
                 }}
