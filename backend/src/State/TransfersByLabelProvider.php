@@ -86,7 +86,8 @@ class TransfersByLabelProvider implements ProviderInterface
             null,
             null,
             null,
-            'eq',
+            'eq',  // amountOperator
+            false, // noLabelsOnly is always false for label-specific transfers
             10000,
             0,
         );

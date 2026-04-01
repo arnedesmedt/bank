@@ -14,6 +14,7 @@ use DateTimeImmutable;
 use function array_filter;
 use function array_map;
 use function array_values;
+use function in_array;
 use function is_array;
 use function is_numeric;
 use function is_string;
@@ -82,6 +83,14 @@ class TransferStateProvider implements ProviderInterface
             $labelIds = [$filters['labelIds']];
         }
 
+        // Check for "no-labels" filter
+        $noLabelsOnly = false;
+        if (in_array('no-labels', $labelIds, true)) {
+            $noLabelsOnly = true;
+            // Remove 'no-labels' from the array so it doesn't get processed as a regular label ID
+            $labelIds = array_filter($labelIds, static fn (string $id): bool => $id !== 'no-labels');
+        }
+
         if (isset($filters['accountIds']) && is_array($filters['accountIds'])) {
             $accountIds = array_values(array_filter(
                 $filters['accountIds'],
@@ -119,6 +128,7 @@ class TransferStateProvider implements ProviderInterface
             $amountMin,
             $amountMax,
             $amountOperator,
+            $noLabelsOnly,
             $itemsPerPage,
             $offset,
         );

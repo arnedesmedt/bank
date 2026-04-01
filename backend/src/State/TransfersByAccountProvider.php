@@ -18,6 +18,7 @@ use Symfony\Component\Uid\Uuid;
 use function array_filter;
 use function array_map;
 use function array_values;
+use function in_array;
 use function is_array;
 use function is_string;
 
@@ -80,6 +81,14 @@ class TransfersByAccountProvider implements ProviderInterface
             ));
         }
 
+        // Check for "no-labels" filter
+        $noLabelsOnly = false;
+        if (in_array('no-labels', $labelIds, true)) {
+            $noLabelsOnly = true;
+            // Remove 'no-labels' from the array so it doesn't get processed as a regular label ID
+            $labelIds = array_filter($labelIds, static fn (string $id): bool => $id !== 'no-labels');
+        }
+
         $transfers = $this->transferRepository->findWithFilters(
             $search,
             $dateFrom,
@@ -90,6 +99,7 @@ class TransfersByAccountProvider implements ProviderInterface
             null,
             null,
             'eq',
+            $noLabelsOnly,
             10000,
             0,
         );

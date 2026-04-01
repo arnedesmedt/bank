@@ -51,7 +51,7 @@ export function fetchBankAccountTransfers(
   filters?.labelIds?.forEach((lid) => params.append('labelIds[]', lid));
   if (filters?.amountMin) params.set('amountMin', filters.amountMin);
   if (filters?.amountMax) params.set('amountMax', filters.amountMax);
-  if (filters?.amountOperator) params.set('amountOperator', filters.amountOperator);
+  if (filters?.amountOperator && filters.amountOperator !== 'eq') params.set('amountOperator', filters.amountOperator);
   const query = params.toString();
   return apiGet<BankAccountTransfer[]>(`/api/bank-accounts/${id}/transfers${query ? `?${query}` : ''}`, accessToken);
 }

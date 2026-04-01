@@ -85,7 +85,7 @@ export async function fetchTransfers(
     }
     if (filters.amountMin) params.set('amountMin', filters.amountMin);
     if (filters.amountMax) params.set('amountMax', filters.amountMax);
-    if (filters.amountOperator) params.set('amountOperator', filters.amountOperator);
+    if (filters.amountOperator && filters.amountOperator !== 'eq') params.set('amountOperator', filters.amountOperator);
 
     const query = params.toString();
     return apiGet<Transfer[]>(`/api/transfers${query ? `?${query}` : ''}`, accessToken);

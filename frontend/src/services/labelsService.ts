@@ -92,7 +92,7 @@ export function fetchLabelTransfers(
     if (filters?.dateTo) params.set('dateTo', filters.dateTo);
     if (filters?.amountMin) params.set('amountMin', filters.amountMin);
     if (filters?.amountMax) params.set('amountMax', filters.amountMax);
-    if (filters?.amountOperator) params.set('amountOperator', filters.amountOperator);
+    if (filters?.amountOperator && filters.amountOperator !== 'eq') params.set('amountOperator', filters.amountOperator);
     const query = params.toString();
     return apiGet<LabelTransfer[]>(`/api/labels/${labelId}/transfers${query ? `?${query}` : ''}`, accessToken);
 }

@@ -220,7 +220,8 @@ class TransferRepository extends ServiceEntityRepository
         string|null $accountId = null,
         float|null $amountMin = null,
         float|null $amountMax = null,
-        string $amountOperator = 'eq',
+        string|null $amountOperator = 'eq',
+        bool $noLabelsOnly = false,
         int $limit = 30,
         int $offset = 0,
     ): array {
@@ -234,6 +235,7 @@ class TransferRepository extends ServiceEntityRepository
             $amountMin,
             $amountMax,
             $amountOperator,
+            $noLabelsOnly,
         );
         $queryBuilder->orderBy('t.date', 'DESC')
             ->setMaxResults($limit)
@@ -314,7 +316,8 @@ class TransferRepository extends ServiceEntityRepository
         string|null $accountId = null,
         float|null $amountMin = null,
         float|null $amountMax = null,
-        string $amountOperator = 'eq',
+        string|null $amountOperator = 'eq',
+        bool $noLabelsOnly = false,
     ): QueryBuilder {
         $queryBuilder = $this->createQueryBuilder('t')
             ->andWhere('t.isReversed = false');
@@ -342,6 +345,15 @@ class TransferRepository extends ServiceEntityRepository
                 ->setParameter('labelIds', $labelIds);
         }
 
+        // Handle "no labels" filter
+        if ($noLabelsOnly) {
+            // Left join to ensure we get transfers without labels
+            $queryBuilder->leftJoin('t.labelTransferLinks', 'ltl_no_labels')
+                ->leftJoin('ltl_no_labels.label', 'lbl_no_labels')
+                ->andWhere('lbl_no_labels.uuid IS NULL')
+                ->orWhere('ltl_no_labels.isArchived = true');
+        }
+
         if ($accountIds !== []) {
             $uuids = array_values(array_filter(array_map(
                 static fn (string $id): Uuid|null => Uuid::isValid($id) ? Uuid::fromRfc4122($id) : null,
@@ -361,7 +373,9 @@ class TransferRepository extends ServiceEntityRepository
 
         // Amount filtering
         if ($amountMin !== null || $amountMax !== null) {
-            if ($amountOperator === 'eq') {
+            $operator = $amountOperator ?? 'eq'; // Default to 'eq' if null
+
+            if ($operator === 'eq') {
                 // For equality operator, handle single value or range
                 if ($amountMin !== null && $amountMax !== null) {
                     // Range filtering when both min and max are provided
@@ -377,22 +391,22 @@ class TransferRepository extends ServiceEntityRepository
                     $queryBuilder->andWhere('t.amount = :amount')
                         ->setParameter('amount', $amountMax);
                 }
-            } elseif ($amountOperator === 'lt') {
+            } elseif ($operator === 'lt') {
                 if ($amountMin !== null) {
                     $queryBuilder->andWhere('t.amount < :amountMin')
                         ->setParameter('amountMin', $amountMin);
                 }
-            } elseif ($amountOperator === 'gt') {
+            } elseif ($operator === 'gt') {
                 if ($amountMin !== null) {
                     $queryBuilder->andWhere('t.amount > :amountMin')
                         ->setParameter('amountMin', $amountMin);
                 }
-            } elseif ($amountOperator === 'lte') {
+            } elseif ($operator === 'lte') {
                 if ($amountMin !== null) {
                     $queryBuilder->andWhere('t.amount <= :amountMin')
                         ->setParameter('amountMin', $amountMin);
                 }
-            } elseif ($amountOperator === 'gte') {
+            } elseif ($operator === 'gte') {
                 if ($amountMin !== null) {
                     $queryBuilder->andWhere('t.amount >= :amountMin')
                         ->setParameter('amountMin', $amountMin);

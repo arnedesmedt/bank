@@ -408,6 +408,52 @@ export function ActionBar({
                                         )}
                                         
                                         {/* Available labels */}
+                                        <div className="px-3 py-2 text-xs font-medium text-gray-500 bg-gray-50 border-b border-gray-100">
+                                            Filter by Label
+                                        </div>
+                                        
+                                        {/* No Labels option */}
+                                        <button
+                                            type="button"
+                                            role="option"
+                                            aria-selected={filters.labelIds.includes('no-labels')}
+                                            onClick={() => {
+                                                // Toggle "no-labels" filter
+                                                if (filters.labelIds.includes('no-labels')) {
+                                                    // Remove no-labels filter
+                                                    onFiltersChange!({ 
+                                                        ...filters, 
+                                                        labelIds: filters.labelIds.filter(id => id !== 'no-labels') 
+                                                    });
+                                                } else {
+                                                    // Set only no-labels filter (clear other labels)
+                                                    onFiltersChange!({ 
+                                                        ...filters, 
+                                                        labelIds: ['no-labels'] 
+                                                    });
+                                                }
+                                            }}
+                                            className={`w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-gray-50 focus:bg-gray-50 focus:outline-none ${
+                                                filters.labelIds.includes('no-labels') ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
+                                            }`}
+                                        >
+                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                                <path strokeLinecap="round" strokeLinejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                                            </svg>
+                                            <span className="flex-1">No Labels</span>
+                                            {filters.labelIds.includes('no-labels') && (
+                                                <svg className="w-3 h-3 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                                </svg>
+                                            )}
+                                        </button>
+                                        
+                                        {filteredLabels.length > 0 && (
+                                            <div className="px-3 py-2 text-xs text-gray-400 text-center border-b border-gray-100">
+                                                ──
+                                            </div>
+                                        )}
+                                        
                                         {filteredLabels.length > 0 ? (
                                             filteredLabels.map((label) => {
                                                 // Skip if already in selected section
