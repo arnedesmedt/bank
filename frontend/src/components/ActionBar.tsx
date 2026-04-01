@@ -99,12 +99,20 @@ export function ActionBar({
 
     // ── Label dropdown ────────────────────────────────────────────────────────
     const [labelMenuOpen, setLabelMenuOpen] = useState(false);
+    const [labelSearch, setLabelSearch] = useState('');
     const labelMenuRef = useRef<HTMLDivElement | null>(null);
+
+    // Filter labels based on search term
+    const filteredLabels = availableLabels.filter(label =>
+        label.name.toLowerCase().includes(labelSearch.toLowerCase())
+    );
 
     useEffect(() => {
         const handler = (e: MouseEvent) => {
             if (labelMenuRef.current && !labelMenuRef.current.contains(e.target as Node)) {
                 setLabelMenuOpen(false);
+                // Clear search when closing the dropdown
+                setLabelSearch('');
             }
         };
         document.addEventListener('mousedown', handler);
@@ -272,38 +280,69 @@ export function ActionBar({
 
                             {labelMenuOpen && (
                                 <div
-                                    className="absolute top-full left-0 mt-1 w-56 bg-white border border-gray-200 rounded-md shadow-lg z-30 max-h-64 overflow-y-auto"
+                                    className="absolute top-full left-0 mt-1 w-56 bg-white border border-gray-200 rounded-md shadow-lg z-30"
                                     role="listbox"
                                     aria-label="Filter by label"
                                     aria-multiselectable="true"
                                 >
-                                    {availableLabels.map((label) => (
-                                        <button
-                                            key={label.id}
-                                            type="button"
-                                            role="option"
-                                            aria-selected={filters.labelIds.includes(label.id)}
-                                            onClick={() => toggleLabel(label.id)}
-                                            className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center gap-2 ${
-                                                filters.labelIds.includes(label.id) ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
-                                            }`}
-                                        >
-                                            <span
-                                                className={`w-4 h-4 border rounded flex-shrink-0 flex items-center justify-center ${
-                                                    filters.labelIds.includes(label.id)
-                                                        ? 'bg-blue-600 border-blue-600'
-                                                        : 'border-gray-300'
-                                                }`}
+                                    {/* Search input for labels */}
+                                    <div className="p-2 border-b border-gray-100">
+                                        <div className="relative">
+                                            <svg
+                                                className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none"
+                                                fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
+                                                aria-hidden="true"
                                             >
-                                                {filters.labelIds.includes(label.id) && (
-                                                    <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                                                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                                                    </svg>
-                                                )}
-                                            </span>
-                                            {label.name}
-                                        </button>
-                                    ))}
+                                                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 111 11a6 6 0 0116 0z" />
+                                            </svg>
+                                            <input
+                                                type="search"
+                                                placeholder="Search labels…"
+                                                value={labelSearch}
+                                                onChange={(e) => setLabelSearch(e.target.value)}
+                                                className="w-full pl-7 pr-2 py-1.5 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-400"
+                                                aria-label="Search labels"
+                                                autoFocus
+                                            />
+                                        </div>
+                                    </div>
+                                    
+                                    {/* Labels list */}
+                                    <div className="max-h-48 overflow-y-auto">
+                                        {filteredLabels.length > 0 ? (
+                                            filteredLabels.map((label) => (
+                                                <button
+                                                    key={label.id}
+                                                    type="button"
+                                                    role="option"
+                                                    aria-selected={filters.labelIds.includes(label.id)}
+                                                    onClick={() => toggleLabel(label.id)}
+                                                    className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center gap-2 ${
+                                                        filters.labelIds.includes(label.id) ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
+                                                    }`}
+                                                >
+                                                    <span
+                                                        className={`w-4 h-4 border rounded flex-shrink-0 flex items-center justify-center ${
+                                                            filters.labelIds.includes(label.id)
+                                                                ? 'bg-blue-600 border-blue-600'
+                                                                : 'border-gray-300'
+                                                        }`}
+                                                    >
+                                                        {filters.labelIds.includes(label.id) && (
+                                                            <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                                                                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                                            </svg>
+                                                        )}
+                                                    </span>
+                                                    {label.name}
+                                                </button>
+                                            ))
+                                        ) : (
+                                            <div className="px-3 py-4 text-sm text-gray-500 text-center">
+                                                {labelSearch ? 'No labels found' : 'No labels available'}
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
                             )}
                         </div>
