@@ -86,6 +86,9 @@ const LabelDetailPage: React.FC = () => {
                 search: f.search || undefined,
                 dateFrom: f.dateFrom || undefined,
                 dateTo: f.dateTo || undefined,
+                amountMin: f.amountMin || undefined,
+                amountMax: f.amountMax || undefined,
+                amountOperator: f.amountOperator || undefined,
             });
             setTransfers(data);
         } catch {

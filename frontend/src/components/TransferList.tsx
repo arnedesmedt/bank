@@ -132,6 +132,9 @@ export function TransferList({
                         dateTo: filters?.dateTo,
                         labelIds: filters?.labelIds,
                         accountIds: filters?.accountIds,
+                        amountMin: filters?.amountMin,
+                        amountMax: filters?.amountMax,
+                        amountOperator: filters?.amountOperator,
                     },
                     accessToken,
                 );
@@ -172,6 +175,9 @@ export function TransferList({
                         dateTo: filters?.dateTo,
                         labelIds: filters?.labelIds,
                         accountIds: filters?.accountIds,
+                        amountMin: filters?.amountMin,
+                        amountMax: filters?.amountMax,
+                        amountOperator: filters?.amountOperator,
                     },
                     accessToken,
                 );

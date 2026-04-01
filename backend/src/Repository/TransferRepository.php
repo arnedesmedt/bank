@@ -362,10 +362,20 @@ class TransferRepository extends ServiceEntityRepository
         // Amount filtering
         if ($amountMin !== null || $amountMax !== null) {
             if ($amountOperator === 'eq') {
-                // For equality, use amountMin as the value
-                if ($amountMin !== null) {
+                // For equality operator, handle single value or range
+                if ($amountMin !== null && $amountMax !== null) {
+                    // Range filtering when both min and max are provided
+                    $queryBuilder->andWhere('t.amount BETWEEN :amountMin AND :amountMax')
+                        ->setParameter('amountMin', $amountMin)
+                        ->setParameter('amountMax', $amountMax);
+                } elseif ($amountMin !== null) {
+                    // Single value equality using amountMin
                     $queryBuilder->andWhere('t.amount = :amount')
                         ->setParameter('amount', $amountMin);
+                } elseif ($amountMax !== null) {
+                    // Single value equality using amountMax
+                    $queryBuilder->andWhere('t.amount = :amount')
+                        ->setParameter('amount', $amountMax);
                 }
             } elseif ($amountOperator === 'lt') {
                 if ($amountMin !== null) {
@@ -387,13 +397,6 @@ class TransferRepository extends ServiceEntityRepository
                     $queryBuilder->andWhere('t.amount >= :amountMin')
                         ->setParameter('amountMin', $amountMin);
                 }
-            }
-
-            // If both min and max are provided, add range filtering
-            if ($amountMin !== null && $amountMax !== null && $amountOperator === 'eq') {
-                $queryBuilder->andWhere('t.amount BETWEEN :amountMin AND :amountMax')
-                    ->setParameter('amountMin', $amountMin)
-                    ->setParameter('amountMax', $amountMax);
             }
         }
 

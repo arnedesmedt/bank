@@ -71,9 +71,15 @@ class EntityMapper
             }
 
             // Always include in labelLinks for UI display (archive/unarchive functionality)
-            // Use the label UUID as the ID, not the link UUID, for consistency with labelIds
+            // Use the LabelTransferLink UUID for archive operations, but also include label UUID for consistency
+            $linkUuid = $labelTransferLink->getId();
+            if ($linkUuid === null) {
+                continue;
+            }
+
             $transferApiResource->labelLinks[] = [
-                'id'        => $labelIdStr,
+                'id'        => $linkUuid->toRfc4122(),  // Use LabelTransferLink UUID for archive operations
+                'labelId'   => $labelIdStr,             // Include Label UUID for reference
                 'name'      => $label->getName(),
                 'isManual'  => $labelTransferLink->isManual(),
                 'isArchived' => $labelTransferLink->isArchived(),

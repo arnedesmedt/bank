@@ -71,6 +71,9 @@ const BankAccountDetailPage: React.FC<Props> = ({ bankAccountId, onBack }) => {
                 dateFrom: activeFilters.dateFrom || undefined,
                 dateTo: activeFilters.dateTo || undefined,
                 labelIds: activeFilters.labelIds.length > 0 ? activeFilters.labelIds : undefined,
+                amountMin: activeFilters.amountMin || undefined,
+                amountMax: activeFilters.amountMax || undefined,
+                amountOperator: activeFilters.amountOperator || undefined,
             });
             setTransfers(data);
         } catch {
