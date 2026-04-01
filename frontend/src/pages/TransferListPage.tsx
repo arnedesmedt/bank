@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { fetchBankAccounts } from '../services/bankAccountsService';
 import type { BankAccount } from '../services/bankAccountsService';
 import type { Label } from '../services/labelsService';
@@ -23,12 +23,35 @@ const TransferListPage: React.FC = () => {
     const { addNotification } = useNotifications();
     const { accessToken } = useAuth();
     const [searchParams] = useSearchParams();
+    const navigate = useNavigate();
     const [showImportModal, setShowImportModal] = useState(false);
     const [refreshKey, setRefreshKey] = useState(0);
     const [filters, setFilters] = usePersistedFilters();
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
     const [internalAccounts, setInternalAccounts] = useState<BankAccount[]>([]);
     const [labels, setLabels] = useState<Label[]>([]);
+
+    // Create a wrapper function that updates filters and URL
+    const handleFiltersChange = (newFilters: typeof filters) => {
+        setFilters(newFilters);
+        
+        // Update URL to reflect current filters
+        const params = new URLSearchParams();
+        
+        if (newFilters.search) params.set('search', newFilters.search);
+        if (newFilters.dateFrom) params.set('dateFrom', newFilters.dateFrom);
+        if (newFilters.dateTo) params.set('dateTo', newFilters.dateTo);
+        if (newFilters.labelIds.length > 0) {
+            newFilters.labelIds.forEach(id => params.append('labelIds[]', id));
+        }
+        if (newFilters.accountIds.length > 0) {
+            newFilters.accountIds.forEach(id => params.append('accountIds[]', id));
+        }
+        
+        const queryString = params.toString();
+        const newPath = queryString ? `?${queryString}` : '';
+        navigate(newPath, { replace: true });
+    };
 
     // Apply URL parameters to filters (but only if they exist, otherwise keep persisted filters)
     useEffect(() => {
@@ -55,14 +78,14 @@ const TransferListPage: React.FC = () => {
                 dateTo: urlFilters.dateTo || '',
                 labelIds: urlFilters.labelIds || [],
                 accountIds: urlFilters.accountIds || [],
-                amountMin: '',
-                amountMax: '',
-                amountOperator: 'eq' as const
+                amountMin: filters.amountMin,  // Preserve existing amount filters
+                amountMax: filters.amountMax,  // Preserve existing amount filters
+                amountOperator: filters.amountOperator  // Preserve existing amount filters
             };
             
             setFilters(newFilters);
         }
-    }, [searchParams, setFilters]);
+    }, [searchParams]); // Remove setFilters from dependencies to prevent loops
 
     // Fetch internal accounts
     useEffect(() => {
@@ -97,7 +120,7 @@ const TransferListPage: React.FC = () => {
             {/* Action bar with filters + import button */}
             <ActionBar
                 filters={filters}
-                onFiltersChange={setFilters}
+                onFiltersChange={handleFiltersChange}
                 availableLabels={labelOptions}
                 availableAccounts={accountOptions}
                 selectedCount={selectedIds.length}

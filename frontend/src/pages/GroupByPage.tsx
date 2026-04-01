@@ -165,52 +165,96 @@ const GroupByPage: React.FC = () => {
         const indexVal = String(datum.indexValue); // x-axis value (period string, or label name for label mode)
         const keyVal   = String(datum.id);         // the key name (label name for multi-key charts)
 
+        // Build URL parameters from current filters + clicked item
+        const params = new URLSearchParams();
+        
+        // Add current search if present
+        if (filters.search) params.set('search', filters.search);
+        
+        // Add current date range if present
+        if (filters.dateFrom) params.set('dateFrom', filters.dateFrom);
+        if (filters.dateTo) params.set('dateTo', filters.dateTo);
+        
+        // Add current label filters if present
+        if (filters.labelIds.length > 0) {
+            filters.labelIds.forEach(id => params.append('labelIds[]', id));
+        }
+
         if (groupBy === 'label_and_period') {
             const range = periodToDateRange(indexVal, period);
             const matchingLabel = labels.find((l) => l.name === keyVal);
             if (range && matchingLabel) {
-                navigate(`/transfers?dateFrom=${range.dateFrom}&dateTo=${range.dateTo}&labelIds[]=${matchingLabel.id}`);
+                // Override date range and add specific label
+                params.set('dateFrom', range.dateFrom);
+                params.set('dateTo', range.dateTo);
+                params.set('labelIds[]', matchingLabel.id);
             } else if (range) {
-                navigate(`/transfers?dateFrom=${range.dateFrom}&dateTo=${range.dateTo}`);
+                // Override date range only
+                params.set('dateFrom', range.dateFrom);
+                params.set('dateTo', range.dateTo);
             }
-            return;
-        }
-
-        if (groupBy === 'period') {
+        } else if (groupBy === 'period') {
             const range = periodToDateRange(indexVal, period);
-            if (range) navigate(`/transfers?dateFrom=${range.dateFrom}&dateTo=${range.dateTo}`);
-            return;
+            if (range) {
+                // Override date range
+                params.set('dateFrom', range.dateFrom);
+                params.set('dateTo', range.dateTo);
+            }
+        } else if (groupBy === 'label') {
+            // label mode: datum.data.id holds the label UUID (set as singleBarData[i].id)
+            const labelUuid = String(datum.data['id'] ?? indexVal);
+            if (labelUuid) {
+                params.set('labelIds[]', labelUuid);
+            }
         }
 
-        // label mode: datum.data.id holds the label UUID (set as singleBarData[i].id)
-        if (groupBy === 'label') {
-            const labelUuid = String(datum.data['id'] ?? indexVal);
-            if (labelUuid) navigate(`/transfers?labelIds[]=${labelUuid}`);
-        }
+        const queryString = params.toString();
+        navigate(`/transfers${queryString ? `?${queryString}` : ''}`);
     };
 
     // Handle clicks on table rows using GroupByResult data
     const handleRowClick = (row: GroupByResult) => {
+        // Build URL parameters from current filters + clicked item
+        const params = new URLSearchParams();
+        
+        // Add current search if present
+        if (filters.search) params.set('search', filters.search);
+        
+        // Add current date range if present
+        if (filters.dateFrom) params.set('dateFrom', filters.dateFrom);
+        if (filters.dateTo) params.set('dateTo', filters.dateTo);
+        
+        // Add current label filters if present
+        if (filters.labelIds.length > 0) {
+            filters.labelIds.forEach(id => params.append('labelIds[]', id));
+        }
+
         if (groupBy === 'label_and_period') {
             const range = periodToDateRange(row.period, period);
             if (range && row.labelId) {
-                navigate(`/transfers?dateFrom=${range.dateFrom}&dateTo=${range.dateTo}&labelIds[]=${row.labelId}`);
+                // Override date range and add specific label
+                params.set('dateFrom', range.dateFrom);
+                params.set('dateTo', range.dateTo);
+                params.set('labelIds[]', row.labelId);
             } else if (range) {
-                navigate(`/transfers?dateFrom=${range.dateFrom}&dateTo=${range.dateTo}`);
+                // Override date range only
+                params.set('dateFrom', range.dateFrom);
+                params.set('dateTo', range.dateTo);
             }
-            return;
-        }
-
-        if (groupBy === 'period') {
+        } else if (groupBy === 'period') {
             const range = periodToDateRange(row.period, period);
-            if (range) navigate(`/transfers?dateFrom=${range.dateFrom}&dateTo=${range.dateTo}`);
-            return;
+            if (range) {
+                // Override date range
+                params.set('dateFrom', range.dateFrom);
+                params.set('dateTo', range.dateTo);
+            }
+        } else if (groupBy === 'label' && row.labelId) {
+            // label mode
+            params.set('labelIds[]', row.labelId);
         }
 
-        // label mode
-        if (groupBy === 'label' && row.labelId) {
-            navigate(`/transfers?labelIds[]=${row.labelId}`);
-        }
+        const queryString = params.toString();
+        navigate(`/transfers${queryString ? `?${queryString}` : ''}`);
     };
 
     // ── Value scale: always include 0 so negative-only data renders correctly ─
