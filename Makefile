@@ -165,15 +165,14 @@ db-restore: ## Restore a backup of the bank_db database (usage: make db-restore 
 			exit 1; \
 		fi; \
 		echo "No backup file specified, using latest: $$LATEST_BACKUP"; \
-		echo "Restoring backup: $$LATEST_BACKUP"; \
-		cd $(ROOT_DIR) && docker compose exec -T db psql -U bank_user -d bank_app < "$$LATEST_BACKUP"; \
+		cd $(ROOT_DIR) && ./scripts/restore-db.sh "$$LATEST_BACKUP"; \
 	else \
 		if [ ! -f "$(BACKUP_FILE)" ]; then \
 			echo "Error: Backup file '$(BACKUP_FILE)' not found"; \
 			exit 1; \
 		fi; \
 		echo "Restoring backup: $(BACKUP_FILE)"; \
-		cd $(ROOT_DIR) && docker compose exec -T db psql -U bank_user -d bank_app < "$(BACKUP_FILE)"; \
+		cd $(ROOT_DIR) && ./scripts/restore-db.sh "$(BACKUP_FILE)"; \
 	fi
 	@echo "Backup restored successfully"
 
