@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useRef } from 'react';
 import type { TransferFilters } from '../components/ActionBar';
 
 const DEFAULT_FILTERS: TransferFilters = {

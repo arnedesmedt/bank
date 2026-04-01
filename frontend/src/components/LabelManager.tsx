@@ -2,17 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
-// Utility function for handling Ctrl+click to open in new tab
-const handleCtrlClick = (e: React.MouseEvent, url: string) => {
-    if (e.ctrlKey || e.metaKey) {
-        e.preventDefault();
-        window.open(url, '_blank');
-    } else {
-        // Normal navigation
-        window.location.href = url;
-    }
-};
-
 interface Label {
   id: string;
   name: string;

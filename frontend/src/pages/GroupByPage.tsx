@@ -6,7 +6,6 @@ import type { GroupByResult } from '../services/transfersService';
 import { fetchLabels } from '../services/labelsService';
 import type { Label } from '../services/labelsService';
 import { ActionBar } from '../components/ActionBar';
-import type { TransferFilters } from '../components/ActionBar';
 import { usePersistedFilters } from '../hooks/usePersistedFilters';
 import { ResponsiveBar } from '@nivo/bar';
 

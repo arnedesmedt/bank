@@ -11,7 +11,7 @@ import GroupByPage from './pages/GroupByPage';
 import SettingsPage from './pages/SettingsPage';
 import Sidebar from './components/Sidebar';
 import TopBar from './components/TopBar';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
     BrowserRouter,
     Routes,
@@ -95,6 +95,12 @@ function AppContent() {
         if (location.pathname.startsWith('/settings')) return 'settings';
         return 'transfers';
     }, [location.pathname]);
+
+    // Update page title dynamically
+    useEffect(() => {
+        let title = PAGE_TITLES[currentPage];
+        document.title = `${title} - Bank App`;
+    }, [currentPage]);
 
     if (isLoading) {
         return (

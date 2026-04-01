@@ -97,18 +97,6 @@ export function ActionBar({
         [filters, onFiltersChange],
     );
 
-    // Utility function for handling Ctrl+click to open in new tab
-const handleCtrlClick = (e: React.MouseEvent, url: string) => {
-    if (e.ctrlKey || e.metaKey) {
-        e.preventDefault();
-        window.open(url, '_blank');
-    } else {
-        // Normal navigation
-        window.location.href = url;
-    }
-};
-
-    // ── Label dropdown ────────────────────────────────────────────────────────
     const [labelMenuOpen, setLabelMenuOpen] = useState(false);
     const [labelSearch, setLabelSearch] = useState('');
     const labelMenuRef = useRef<HTMLDivElement | null>(null);
@@ -117,6 +105,19 @@ const handleCtrlClick = (e: React.MouseEvent, url: string) => {
     const filteredLabels = availableLabels.filter(label =>
         label.name.toLowerCase().includes(labelSearch.toLowerCase())
     );
+
+    // Helper function to safely parse date strings
+    const safeParseDate = (dateString: string): Date | null => {
+        if (!dateString) return null;
+        
+        const date = new Date(dateString);
+        // Check if the date is valid
+        if (isNaN(date.getTime())) {
+            return null;
+        }
+        
+        return date;
+    };
 
     useEffect(() => {
         const handler = (e: MouseEvent) => {
@@ -221,7 +222,7 @@ const handleCtrlClick = (e: React.MouseEvent, url: string) => {
                             <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                         </svg>
                         <DatePicker
-                            selected={filters.dateFrom ? new Date(filters.dateFrom) : null}
+                            selected={filters.dateFrom ? safeParseDate(filters.dateFrom) : null}
                             onChange={(date: Date | null) => {
                                 const formatted = date
                                     ? `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`
@@ -249,7 +250,7 @@ const handleCtrlClick = (e: React.MouseEvent, url: string) => {
                             <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                         </svg>
                         <DatePicker
-                            selected={filters.dateTo ? new Date(filters.dateTo) : null}
+                            selected={filters.dateTo ? safeParseDate(filters.dateTo) : null}
                             onChange={(date: Date | null) => {
                                 const formatted = date
                                     ? `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`

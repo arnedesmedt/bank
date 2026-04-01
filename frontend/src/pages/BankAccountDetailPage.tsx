@@ -13,17 +13,6 @@ import { ActionBar } from '../components/ActionBar';
 import type { TransferFilters, LabelOption } from '../components/ActionBar';
 import { useNavigate } from 'react-router-dom';
 
-// Utility function for handling Ctrl+click to open in new tab
-const handleCtrlClick = (e: React.MouseEvent, url: string) => {
-    if (e.ctrlKey || e.metaKey) {
-        e.preventDefault();
-        window.open(url, '_blank');
-    } else {
-        // Normal navigation
-        window.location.href = url;
-    }
-};
-
 interface Props {
     bankAccountId: string;
     onBack: () => void;
