@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { TransferFilters } from '../components/ActionBar';
 
 const STORAGE_KEY = 'bank-transfer-filters';
@@ -20,7 +20,7 @@ export function usePersistedFilters(): [TransferFilters, (filters: TransferFilte
     const getInitialFilters = (): TransferFilters => {
         try {
             const stored = localStorage.getItem(STORAGE_KEY);
-            if (stored) {
+            if (stored && stored !== 'undefined' && stored !== 'null') {
                 const parsedFilters = JSON.parse(stored);
                 // Validate that the parsed object has the expected structure
                 if (parsedFilters && 
@@ -35,17 +35,50 @@ export function usePersistedFilters(): [TransferFilters, (filters: TransferFilte
             }
         } catch (error) {
             console.warn('Failed to load filters from localStorage:', error);
+            // Clear corrupted data to prevent future errors
+            try {
+                localStorage.removeItem(STORAGE_KEY);
+            } catch (clearError) {
+                console.warn('Failed to clear corrupted localStorage:', clearError);
+            }
         }
         return DEFAULT_FILTERS;
     };
 
     const [filters, setFilters] = useState<TransferFilters>(getInitialFilters);
+    const prevFiltersRef = useRef<TransferFilters>(getInitialFilters());
 
-    // Create a wrapper function that saves to localStorage
+    // Create a wrapper function that saves to localStorage only when filters actually change
     const updateFilters = (newFilters: TransferFilters) => {
-        setFilters(newFilters);
+        // Ensure we have valid filter objects
+        const prevFilters = prevFiltersRef.current || DEFAULT_FILTERS;
+        const safeNewFilters = {
+            search: newFilters.search || '',
+            dateFrom: newFilters.dateFrom || '',
+            dateTo: newFilters.dateTo || '',
+            labelIds: newFilters.labelIds || [],
+            accountIds: newFilters.accountIds || []
+        };
+        
+        // Check if filters actually changed
+        const filtersChanged = 
+            safeNewFilters.search !== prevFilters.search ||
+            safeNewFilters.dateFrom !== prevFilters.dateFrom ||
+            safeNewFilters.dateTo !== prevFilters.dateTo ||
+            safeNewFilters.labelIds.length !== prevFilters.labelIds.length ||
+            safeNewFilters.labelIds.some((id, i) => id !== prevFilters.labelIds[i]) ||
+            safeNewFilters.accountIds.length !== prevFilters.accountIds.length ||
+            safeNewFilters.accountIds.some((id, i) => id !== prevFilters.accountIds[i]);
+
+        if (!filtersChanged) {
+            return; // No change, don't update
+        }
+
+        setFilters(safeNewFilters);
+        prevFiltersRef.current = safeNewFilters;
+        
         try {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(newFilters));
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(safeNewFilters));
         } catch (error) {
             console.warn('Failed to save filters to localStorage:', error);
         }

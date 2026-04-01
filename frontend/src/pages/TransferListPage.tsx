@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { fetchBankAccounts } from '../services/bankAccountsService';
 import type { BankAccount } from '../services/bankAccountsService';
 import type { Label } from '../services/labelsService';
@@ -21,12 +22,44 @@ import { usePersistedFilters } from '../hooks/usePersistedFilters';
 const TransferListPage: React.FC = () => {
     const { addNotification } = useNotifications();
     const { accessToken } = useAuth();
+    const [searchParams] = useSearchParams();
     const [showImportModal, setShowImportModal] = useState(false);
     const [refreshKey, setRefreshKey] = useState(0);
     const [filters, setFilters] = usePersistedFilters();
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
     const [internalAccounts, setInternalAccounts] = useState<BankAccount[]>([]);
     const [labels, setLabels] = useState<Label[]>([]);
+
+    // Apply URL parameters to filters (but only if they exist, otherwise keep persisted filters)
+    useEffect(() => {
+        const urlFilters: Partial<typeof filters> = {};
+        let hasUrlFilters = false;
+
+        const dateFrom = searchParams.get('dateFrom');
+        const dateTo = searchParams.get('dateTo');
+        const search = searchParams.get('search');
+        const labelIds = searchParams.getAll('labelIds[]');
+        const accountIds = searchParams.getAll('accountIds[]');
+
+        if (dateFrom) { urlFilters.dateFrom = dateFrom; hasUrlFilters = true; }
+        if (dateTo) { urlFilters.dateTo = dateTo; hasUrlFilters = true; }
+        if (search) { urlFilters.search = search; hasUrlFilters = true; }
+        if (labelIds.length > 0) { urlFilters.labelIds = labelIds; hasUrlFilters = true; }
+        if (accountIds.length > 0) { urlFilters.accountIds = accountIds; hasUrlFilters = true; }
+
+        // If URL parameters are present, replace all filters (don't merge with existing)
+        if (hasUrlFilters) {
+            const newFilters = {
+                search: urlFilters.search || '',
+                dateFrom: urlFilters.dateFrom || '',
+                dateTo: urlFilters.dateTo || '',
+                labelIds: urlFilters.labelIds || [],
+                accountIds: urlFilters.accountIds || []
+            };
+            
+            setFilters(newFilters);
+        }
+    }, [searchParams, setFilters]);
 
     // Fetch internal accounts
     useEffect(() => {

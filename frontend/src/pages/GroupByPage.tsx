@@ -122,7 +122,7 @@ const GroupByPage: React.FC = () => {
         );
     })();
 
-    // ── Click handler ──────────────────────────────────────────────────────
+    // ── Click handlers ──────────────────────────────────────────────────────
 
     const handleBarClick = (datum: { id: string | number; indexValue: string | number; data: NivoBarDatum }) => {
         const indexVal = String(datum.indexValue); // x-axis value (period string, or label name for label mode)
@@ -149,6 +149,30 @@ const GroupByPage: React.FC = () => {
         if (groupBy === 'label') {
             const labelUuid = String(datum.data['id'] ?? indexVal);
             if (labelUuid) navigate(`/transfers?labelIds[]=${labelUuid}`);
+        }
+    };
+
+    // Handle clicks on table rows using GroupByResult data
+    const handleRowClick = (row: GroupByResult) => {
+        if (groupBy === 'label_and_period') {
+            const range = periodToDateRange(row.period, period);
+            if (range && row.labelId) {
+                navigate(`/transfers?dateFrom=${range.dateFrom}&dateTo=${range.dateTo}&labelIds[]=${row.labelId}`);
+            } else if (range) {
+                navigate(`/transfers?dateFrom=${range.dateFrom}&dateTo=${range.dateTo}`);
+            }
+            return;
+        }
+
+        if (groupBy === 'period') {
+            const range = periodToDateRange(row.period, period);
+            if (range) navigate(`/transfers?dateFrom=${range.dateFrom}&dateTo=${range.dateTo}`);
+            return;
+        }
+
+        // label mode
+        if (groupBy === 'label' && row.labelId) {
+            navigate(`/transfers?labelIds[]=${row.labelId}`);
         }
     };
 
@@ -344,11 +368,7 @@ const GroupByPage: React.FC = () => {
                                         <tr
                                             key={row.id}
                                             className="hover:bg-gray-50 cursor-pointer"
-                                            onClick={() => handleBarClick({
-                                                id: row.labelName ?? row.labelId ?? 'Unknown',
-                                                indexValue: row.period,
-                                                data: { id: row.labelId ?? row.period, period: row.period },
-                                            })}
+                                            onClick={() => handleRowClick(row)}
                                         >
                                             {groupBy === 'label_and_period' && (
                                                 <td className="px-4 py-2 text-gray-500">{row.period}</td>
