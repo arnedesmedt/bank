@@ -97,6 +97,17 @@ export function ActionBar({
         [filters, onFiltersChange],
     );
 
+    // Utility function for handling Ctrl+click to open in new tab
+const handleCtrlClick = (e: React.MouseEvent, url: string) => {
+    if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+        window.open(url, '_blank');
+    } else {
+        // Normal navigation
+        window.location.href = url;
+    }
+};
+
     // ── Label dropdown ────────────────────────────────────────────────────────
     const [labelMenuOpen, setLabelMenuOpen] = useState(false);
     const [labelSearch, setLabelSearch] = useState('');
@@ -324,8 +335,23 @@ export function ActionBar({
                                                             type="button"
                                                             role="option"
                                                             aria-selected={true}
-                                                            onClick={() => toggleLabel(labelId)}
+                                                            onClick={(e) => {
+                                                                if (e.ctrlKey || e.metaKey) {
+                                                                    // Ctrl+click opens label details in new tab
+                                                                    e.preventDefault();
+                                                                    window.open(`/labels/${labelId}`, '_blank');
+                                                                } else {
+                                                                    // Normal click removes the label
+                                                                    toggleLabel(labelId);
+                                                                }
+                                                            }}
+                                                            onContextMenu={(e) => {
+                                                                // Right-click also opens in new tab
+                                                                e.preventDefault();
+                                                                window.open(`/labels/${labelId}`, '_blank');
+                                                            }}
                                                             className="w-full text-left px-3 py-2 text-sm hover:bg-red-50 flex items-center gap-2 bg-blue-50 text-blue-700 border-b border-gray-100"
+                                                            title={`${label.name} (Ctrl+click to view, click to remove)`}
                                                         >
                                                             <span className="w-4 h-4 border rounded flex-shrink-0 flex items-center justify-center bg-blue-600 border-blue-600">
                                                                 <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
@@ -359,8 +385,23 @@ export function ActionBar({
                                                         type="button"
                                                         role="option"
                                                         aria-selected={false}
-                                                        onClick={() => toggleLabel(label.id)}
+                                                        onClick={(e) => {
+                                                            if (e.ctrlKey || e.metaKey) {
+                                                                // Ctrl+click opens label details in new tab
+                                                                e.preventDefault();
+                                                                window.open(`/labels/${label.id}`, '_blank');
+                                                            } else {
+                                                                // Normal click selects the label
+                                                                toggleLabel(label.id);
+                                                            }
+                                                        }}
+                                                        onContextMenu={(e) => {
+                                                            // Right-click also opens in new tab
+                                                            e.preventDefault();
+                                                            window.open(`/labels/${label.id}`, '_blank');
+                                                        }}
                                                         className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center gap-2 text-gray-700"
+                                                        title={`${label.name} (Ctrl+click to view, click to select)`}
                                                     >
                                                         <span className="w-4 h-4 border rounded flex-shrink-0 flex items-center justify-center border-gray-300">
                                                         </span>

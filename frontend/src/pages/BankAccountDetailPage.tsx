@@ -13,6 +13,17 @@ import { ActionBar } from '../components/ActionBar';
 import type { TransferFilters, LabelOption } from '../components/ActionBar';
 import { useNavigate } from 'react-router-dom';
 
+// Utility function for handling Ctrl+click to open in new tab
+const handleCtrlClick = (e: React.MouseEvent, url: string) => {
+    if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+        window.open(url, '_blank');
+    } else {
+        // Normal navigation
+        window.location.href = url;
+    }
+};
+
 interface Props {
     bankAccountId: string;
     onBack: () => void;
@@ -357,7 +368,15 @@ const BankAccountDetailPage: React.FC<Props> = ({ bankAccountId, onBack }) => {
                                             <tr
                                                 key={t.id}
                                                 className="hover:bg-gray-50 cursor-pointer"
-                                                onClick={() => navigate(`/transfers/${t.id}`)}
+                                                onClick={(e) => {
+                                                    if (e.ctrlKey || e.metaKey) {
+                                                        // Ctrl+click opens in new tab
+                                                        e.preventDefault();
+                                                        window.open(`/transfers/${t.id}`, '_blank');
+                                                    } else {
+                                                        navigate(`/transfers/${t.id}`);
+                                                    }
+                                                }}
                                             >
                                                 <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{formatDate(t.date)}</td>
                                                 <td className="px-4 py-3 text-gray-700 max-w-xs truncate">{t.reference || '—'}</td>
@@ -368,7 +387,15 @@ const BankAccountDetailPage: React.FC<Props> = ({ bankAccountId, onBack }) => {
                                                             <button
                                                                 key={link.id}
                                                                 type="button"
-                                                                onClick={(e) => { e.stopPropagation(); navigate(`/labels/${link.id}`); }}
+                                                                onClick={(e) => { 
+                                                                    e.stopPropagation(); 
+                                                                    if (e.ctrlKey || e.metaKey) {
+                                                                        e.preventDefault();
+                                                                        window.open(`/labels/${link.id}`, '_blank');
+                                                                    } else {
+                                                                        navigate(`/labels/${link.id}`);
+                                                                    }
+                                                                }}
                                                                 title={link.isManual ? 'Manually assigned' : 'Auto-assigned'}
                                                                 className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium cursor-pointer hover:opacity-75 transition-opacity ${
                                                                     link.isManual ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'

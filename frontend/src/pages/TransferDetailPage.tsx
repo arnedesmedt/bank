@@ -5,6 +5,17 @@ import { apiGet, API_URL } from '../services/apiClient';
 import { fetchLabels, type Label } from '../services/labelsService';
 import Amount from '../components/Amount';
 
+// Utility function for handling Ctrl+click to open in new tab
+const handleCtrlClick = (e: React.MouseEvent, url: string) => {
+    if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+        window.open(url, '_blank');
+    } else {
+        // Normal navigation
+        window.location.href = url;
+    }
+};
+
 interface LabelLink {
     id: string;
     name: string;
@@ -310,7 +321,14 @@ const TransferDetailPage: React.FC = () => {
                         <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">From</p>
                         {transfer.fromAccountId ? (
                             <button
-                                onClick={() => navigate(`/accounts/${transfer.fromAccountId ?? ''}`)}
+                                onClick={(e) => {
+                                    if (e.ctrlKey || e.metaKey) {
+                                        e.preventDefault();
+                                        window.open(`/accounts/${transfer.fromAccountId ?? ''}`, '_blank');
+                                    } else {
+                                        navigate(`/accounts/${transfer.fromAccountId ?? ''}`);
+                                    }
+                                }}
                                 className="text-left hover:text-blue-600"
                             >
                                 <p className="text-sm font-medium hover:underline">
@@ -336,7 +354,14 @@ const TransferDetailPage: React.FC = () => {
                         <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">To</p>
                         {transfer.toAccountId ? (
                             <button
-                                onClick={() => navigate(`/accounts/${transfer.toAccountId ?? ''}`)}
+                                onClick={(e) => {
+                                    if (e.ctrlKey || e.metaKey) {
+                                        e.preventDefault();
+                                        window.open(`/accounts/${transfer.toAccountId ?? ''}`, '_blank');
+                                    } else {
+                                        navigate(`/accounts/${transfer.toAccountId ?? ''}`);
+                                    }
+                                }}
                                 className="text-left hover:text-blue-600"
                             >
                                 <p className="text-sm font-medium hover:underline">
@@ -406,7 +431,14 @@ const TransferDetailPage: React.FC = () => {
                                 }`}
                             >
                                 <button
-                                    onClick={() => navigate(`/labels/${link.id}`)}
+                                    onClick={(e) => {
+                                        if (e.ctrlKey || e.metaKey) {
+                                            e.preventDefault();
+                                            window.open(`/labels/${link.id}`, '_blank');
+                                        } else {
+                                            navigate(`/labels/${link.id}`);
+                                        }
+                                    }}
                                     className="hover:underline"
                                     title="View label"
                                 >

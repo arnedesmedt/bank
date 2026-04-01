@@ -2,6 +2,17 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
+// Utility function for handling Ctrl+click to open in new tab
+const handleCtrlClick = (e: React.MouseEvent, url: string) => {
+    if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+        window.open(url, '_blank');
+    } else {
+        // Normal navigation
+        window.location.href = url;
+    }
+};
+
 interface Label {
   id: string;
   name: string;
@@ -388,8 +399,25 @@ function LabelManager() {
                     <tr
                       key={label.id}
                       className="hover:bg-blue-50 cursor-pointer transition-colors duration-100"
-                      onClick={() => navigate(`/labels/${label.id}`)}
-                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(`/labels/${label.id}`); } }}
+                      onClick={(e) => {
+                          if (e.ctrlKey || e.metaKey) {
+                              e.preventDefault();
+                              window.open(`/labels/${label.id}`, '_blank');
+                          } else {
+                              navigate(`/labels/${label.id}`);
+                          }
+                      }}
+                      onKeyDown={(e) => { 
+                          if (e.key === 'Enter' || e.key === ' ') { 
+                              if (e.ctrlKey || e.metaKey) {
+                                  e.preventDefault();
+                                  window.open(`/labels/${label.id}`, '_blank');
+                              } else {
+                                  e.preventDefault(); 
+                                  navigate(`/labels/${label.id}`);
+                              }
+                          } 
+                      }}
                       tabIndex={0}
                       role="button"
                       aria-label={`View details for ${label.name}`}

@@ -9,6 +9,17 @@ import type { TransferFilters, BulkAction, LabelOption } from './ActionBar';
 
 const PAGE_SIZE = 30;
 
+// Utility function for handling Ctrl+click to open in new tab
+const handleCtrlClick = (e: React.MouseEvent, url: string) => {
+    if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+        window.open(url, '_blank');
+    } else {
+        // Normal navigation
+        window.location.href = url;
+    }
+};
+
 interface TransferListProps {
     hideImportPanel?: boolean;
     externalRefreshKey?: number;
@@ -358,12 +369,18 @@ export function TransferList({
             rowClass += `cursor-pointer hover:bg-blue-50 ${transfer.isInternal ? 'bg-gray-50' : ''} ${isChild ? 'border-l-4 border-indigo-200' : ''} ${parentHighlight}`;
         }
 
-        const handleRowClick = () => {
+        const handleRowClick = (e: React.MouseEvent) => {
             if (isLinking) {
                 if (isThisParent || isAlreadyChild) return;
                 toggleRefundSelection(transfer.id);
             } else {
-                navigate(`/transfers/${transfer.id}`);
+                if (e.ctrlKey || e.metaKey) {
+                    // Ctrl+click opens in new tab
+                    e.preventDefault();
+                    window.open(`/transfers/${transfer.id}`, '_blank');
+                } else {
+                    navigate(`/transfers/${transfer.id}`);
+                }
             }
         };
 
@@ -439,7 +456,14 @@ export function TransferList({
                     {transfer.fromAccountId ? (
                         <Link
                             to={`/accounts/${transfer.fromAccountId}`}
-                            onClick={(e) => e.stopPropagation()}
+                            onClick={(e) => {
+                                if (e.ctrlKey || e.metaKey) {
+                                    e.preventDefault();
+                                    window.open(`/accounts/${transfer.fromAccountId}`, '_blank');
+                                } else {
+                                    e.stopPropagation();
+                                }
+                            }}
                             className="group hover:text-blue-600"
                             aria-label={`View account: ${transfer.fromAccountName ?? transfer.fromAccountNumber ?? 'Unknown'}`}
                         >
@@ -458,7 +482,14 @@ export function TransferList({
                     {transfer.toAccountId ? (
                         <Link
                             to={`/accounts/${transfer.toAccountId}`}
-                            onClick={(e) => e.stopPropagation()}
+                            onClick={(e) => {
+                                if (e.ctrlKey || e.metaKey) {
+                                    e.preventDefault();
+                                    window.open(`/accounts/${transfer.toAccountId}`, '_blank');
+                                } else {
+                                    e.stopPropagation();
+                                }
+                            }}
                             className="group hover:text-blue-600"
                             aria-label={`View account: ${transfer.toAccountName ?? transfer.toAccountNumber ?? 'Unknown'}`}
                         >
@@ -523,7 +554,10 @@ export function TransferList({
                         {(transfer.labelLinks ?? []).map((link) => (
                             <button
                                 key={link.id}
-                                onClick={(e) => { e.stopPropagation(); navigate(`/labels/${link.id}`); }}
+                                onClick={(e) => { 
+                                    e.stopPropagation(); 
+                                    handleCtrlClick(e, `/labels/${link.id}`);
+                                }}
                                 title={link.isManual ? 'Manually assigned' : 'Auto-assigned'}
                                 className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium cursor-pointer hover:opacity-75 transition-opacity ${
                                     link.isManual ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'
