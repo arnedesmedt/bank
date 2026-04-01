@@ -54,7 +54,10 @@ const TransferListPage: React.FC = () => {
                 dateFrom: urlFilters.dateFrom || '',
                 dateTo: urlFilters.dateTo || '',
                 labelIds: urlFilters.labelIds || [],
-                accountIds: urlFilters.accountIds || []
+                accountIds: urlFilters.accountIds || [],
+                amountMin: '',
+                amountMax: '',
+                amountOperator: 'eq' as const
             };
             
             setFilters(newFilters);

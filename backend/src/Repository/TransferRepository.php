@@ -218,10 +218,23 @@ class TransferRepository extends ServiceEntityRepository
         array $labelIds = [],
         array $accountIds = [],
         string|null $accountId = null,
+        float|null $amountMin = null,
+        float|null $amountMax = null,
+        string $amountOperator = 'eq',
         int $limit = 30,
         int $offset = 0,
     ): array {
-        $queryBuilder = $this->buildFilterQuery($search, $dateFrom, $dateTo, $labelIds, $accountIds, $accountId);
+        $queryBuilder = $this->buildFilterQuery(
+            $search,
+            $dateFrom,
+            $dateTo,
+            $labelIds,
+            $accountIds,
+            $accountId,
+            $amountMin,
+            $amountMax,
+            $amountOperator,
+        );
         $queryBuilder->orderBy('t.date', 'DESC')
             ->setMaxResults($limit)
             ->setFirstResult($offset);
@@ -299,6 +312,9 @@ class TransferRepository extends ServiceEntityRepository
         array $labelIds,
         array $accountIds = [],
         string|null $accountId = null,
+        float|null $amountMin = null,
+        float|null $amountMax = null,
+        string $amountOperator = 'eq',
     ): QueryBuilder {
         $queryBuilder = $this->createQueryBuilder('t')
             ->andWhere('t.isReversed = false');
@@ -341,6 +357,44 @@ class TransferRepository extends ServiceEntityRepository
         if ($accountId !== null && $accountId !== '') {
             $queryBuilder->andWhere('t.fromAccount = :account OR t.toAccount = :account')
                 ->setParameter('account', $accountId);
+        }
+
+        // Amount filtering
+        if ($amountMin !== null || $amountMax !== null) {
+            if ($amountOperator === 'eq') {
+                // For equality, use amountMin as the value
+                if ($amountMin !== null) {
+                    $queryBuilder->andWhere('t.amount = :amount')
+                        ->setParameter('amount', $amountMin);
+                }
+            } elseif ($amountOperator === 'lt') {
+                if ($amountMin !== null) {
+                    $queryBuilder->andWhere('t.amount < :amountMin')
+                        ->setParameter('amountMin', $amountMin);
+                }
+            } elseif ($amountOperator === 'gt') {
+                if ($amountMin !== null) {
+                    $queryBuilder->andWhere('t.amount > :amountMin')
+                        ->setParameter('amountMin', $amountMin);
+                }
+            } elseif ($amountOperator === 'lte') {
+                if ($amountMin !== null) {
+                    $queryBuilder->andWhere('t.amount <= :amountMin')
+                        ->setParameter('amountMin', $amountMin);
+                }
+            } elseif ($amountOperator === 'gte') {
+                if ($amountMin !== null) {
+                    $queryBuilder->andWhere('t.amount >= :amountMin')
+                        ->setParameter('amountMin', $amountMin);
+                }
+            }
+
+            // If both min and max are provided, add range filtering
+            if ($amountMin !== null && $amountMax !== null && $amountOperator === 'eq') {
+                $queryBuilder->andWhere('t.amount BETWEEN :amountMin AND :amountMax')
+                    ->setParameter('amountMin', $amountMin)
+                    ->setParameter('amountMax', $amountMax);
+            }
         }
 
         return $queryBuilder;

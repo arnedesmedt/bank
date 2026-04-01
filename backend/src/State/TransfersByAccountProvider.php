@@ -87,6 +87,9 @@ class TransfersByAccountProvider implements ProviderInterface
             $labelIds,
             [$id],
             null,
+            null,
+            null,
+            'eq',
             10000,
             0,
         );

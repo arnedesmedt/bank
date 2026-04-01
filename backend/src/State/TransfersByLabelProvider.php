@@ -84,6 +84,9 @@ class TransfersByLabelProvider implements ProviderInterface
             [$id],
             [],
             null,
+            null,
+            null,
+            'eq',
             10000,
             0,
         );

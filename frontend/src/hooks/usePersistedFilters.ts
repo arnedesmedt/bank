@@ -6,7 +6,10 @@ const DEFAULT_FILTERS: TransferFilters = {
     dateFrom: '',
     dateTo: '',
     labelIds: [],
-    accountIds: []
+    accountIds: [],
+    amountMin: '',
+    amountMax: '',
+    amountOperator: 'eq'
 };
 
 /**
@@ -29,7 +32,11 @@ export function usePersistedFilters(storageKey: string = 'bank-transfer-filters'
                     typeof parsedFilters.dateFrom === 'string' &&
                     typeof parsedFilters.dateTo === 'string' &&
                     Array.isArray(parsedFilters.labelIds) &&
-                    Array.isArray(parsedFilters.accountIds)) {
+                    Array.isArray(parsedFilters.accountIds) &&
+                    typeof parsedFilters.amountMin === 'string' &&
+                    typeof parsedFilters.amountMax === 'string' &&
+                    typeof parsedFilters.amountOperator === 'string' &&
+                    ['eq', 'lt', 'gt', 'lte', 'gte'].includes(parsedFilters.amountOperator)) {
                     return parsedFilters;
                 }
             }
@@ -57,7 +64,10 @@ export function usePersistedFilters(storageKey: string = 'bank-transfer-filters'
             dateFrom: newFilters.dateFrom || '',
             dateTo: newFilters.dateTo || '',
             labelIds: newFilters.labelIds || [],
-            accountIds: newFilters.accountIds || []
+            accountIds: newFilters.accountIds || [],
+            amountMin: newFilters.amountMin || '',
+            amountMax: newFilters.amountMax || '',
+            amountOperator: (newFilters.amountOperator || 'eq') as TransferFilters['amountOperator']
         };
         
         // Check if filters actually changed
@@ -68,7 +78,10 @@ export function usePersistedFilters(storageKey: string = 'bank-transfer-filters'
             safeNewFilters.labelIds.length !== prevFilters.labelIds.length ||
             safeNewFilters.labelIds.some((id, i) => id !== prevFilters.labelIds[i]) ||
             safeNewFilters.accountIds.length !== prevFilters.accountIds.length ||
-            safeNewFilters.accountIds.some((id, i) => id !== prevFilters.accountIds[i]);
+            safeNewFilters.accountIds.some((id, i) => id !== prevFilters.accountIds[i]) ||
+            safeNewFilters.amountMin !== prevFilters.amountMin ||
+            safeNewFilters.amountMax !== prevFilters.amountMax ||
+            safeNewFilters.amountOperator !== prevFilters.amountOperator;
 
         if (!filtersChanged) {
             return; // No change, don't update

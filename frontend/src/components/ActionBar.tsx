@@ -10,6 +10,9 @@ export interface TransferFilters {
     dateTo: string;
     labelIds: string[];
     accountIds: string[];
+    amountMin: string;
+    amountMax: string;
+    amountOperator: 'eq' | 'lt' | 'gt' | 'lte' | 'gte';
 }
 
 export interface LabelOption {
@@ -269,6 +272,36 @@ export function ActionBar({
                         />
                     </div>
 
+                    {/* Amount filter */}
+                    <div className="flex items-center gap-2">
+                        <select
+                            value={filters.amountOperator}
+                            onChange={(e) => {
+                                const value = e.target.value as TransferFilters['amountOperator'];
+                                onFiltersChange!({ ...filters, amountOperator: value });
+                            }}
+                            className="text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400 px-2 py-1.5"
+                            aria-label="Amount operator"
+                        >
+                            <option value="eq">=</option>
+                            <option value="lt">&lt;</option>
+                            <option value="gt">&gt;</option>
+                            <option value="lte">&le;</option>
+                            <option value="gte">&ge;</option>
+                        </select>
+                        <input
+                            type="number"
+                            step="0.01"
+                            placeholder="Amount"
+                            value={filters.amountMin}
+                            onChange={(e) => {
+                                onFiltersChange!({ ...filters, amountMin: e.target.value });
+                            }}
+                            className="text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400 px-2 py-1.5 w-24"
+                            aria-label="Amount value"
+                        />
+                    </div>
+
                     {/* Label filter dropdown */}
                     {availableLabels.length > 0 && (
                         <div className="relative" ref={labelMenuRef}>
@@ -487,7 +520,7 @@ export function ActionBar({
                             type="button"
                             onClick={() => {
                                 setLocalSearch('');
-                                onFiltersChange!({ search: '', dateFrom: '', dateTo: '', labelIds: [], accountIds: [] });
+                                onFiltersChange!({ search: '', dateFrom: '', dateTo: '', labelIds: [], accountIds: [], amountMin: '', amountMax: '', amountOperator: 'eq' as const });
                             }}
                             className="flex items-center gap-1 px-3 py-1.5 text-sm text-gray-600 bg-gray-100 border border-gray-300 rounded-md hover:bg-red-50 hover:text-red-600 hover:border-red-300 focus:outline-none focus:ring-2 focus:ring-red-300 transition-colors"
                             aria-label="Clear all filters"

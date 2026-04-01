@@ -38,6 +38,9 @@ export interface TransferFilters {
     labelIds?: string[];
     accountId?: string;
     accountIds?: string[];
+    amountMin?: string;
+    amountMax?: string;
+    amountOperator?: 'eq' | 'lt' | 'gt' | 'lte' | 'gte';
 }
 
 export interface GroupByResult {
@@ -78,6 +81,9 @@ export async function fetchTransfers(
     if (filters.accountIds && filters.accountIds.length > 0) {
         filters.accountIds.forEach((id) => params.append('accountIds[]', id));
     }
+    if (filters.amountMin) params.set('amountMin', filters.amountMin);
+    if (filters.amountMax) params.set('amountMax', filters.amountMax);
+    if (filters.amountOperator && filters.amountOperator !== 'eq') params.set('amountOperator', filters.amountOperator);
 
     const query = params.toString();
     return apiGet<Transfer[]>(`/api/transfers${query ? `?${query}` : ''}`, accessToken);
