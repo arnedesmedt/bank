@@ -18,6 +18,7 @@ use InvalidArgumentException;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Uid\Uuid;
 
+use function array_merge;
 use function assert;
 use function bcadd;
 use function bcsub;
@@ -137,6 +138,7 @@ class TransferService
 
     /**
      * Apply a label to multiple transfers (manual assignment).
+     * Also applies all parent labels in the hierarchy.
      *
      * @param array<string> $transferIds
      *
@@ -149,6 +151,9 @@ class TransferService
             throw new InvalidArgumentException('Label not found: ' . $labelId);
         }
 
+        // Get all labels to apply (the label + all its parents)
+        $labelsToApply = $this->getAllLabelsInHierarchy($label);
+
         $updated = [];
         foreach ($transferIds as $transferId) {
             $transfer = $this->transferRepository->find(Uuid::fromRfc4122($transferId));
@@ -156,10 +161,15 @@ class TransferService
                 continue;
             }
 
-            // Only add if not already linked
-            if (! $transfer->hasLabel($label)) {
+            // Apply all labels in the hierarchy
+            foreach ($labelsToApply as $labelToApply) {
+                // Only add if not already linked
+                if ($transfer->hasLabel($labelToApply)) {
+                    continue;
+                }
+
                 $link = new LabelTransferLink();
-                $link->setLabel($label);
+                $link->setLabel($labelToApply);
                 $link->setTransfer($transfer);
                 $link->setIsManual(true);
                 $this->entityManager->persist($link);
@@ -175,7 +185,26 @@ class TransferService
     }
 
     /**
-     * Remove a label from multiple transfers.
+     * Get all labels in the hierarchy (the label + all its parents).
+     *
+     * @return array<Label>
+     */
+    private function getAllLabelsInHierarchy(Label $label): array
+    {
+        $labels = [$label];
+        $parent = $label->getParentLabel();
+
+        while ($parent instanceof Label) {
+            $labels[] = $parent;
+            $parent   = $parent->getParentLabel();
+        }
+
+        return $labels;
+    }
+
+    /**
+     * Remove a label to multiple transfers.
+     * Also removes all child labels in the hierarchy.
      *
      * @param array<string> $transferIds
      *
@@ -188,6 +217,9 @@ class TransferService
             throw new InvalidArgumentException('Label not found: ' . $labelId);
         }
 
+        // Get all labels to remove (the label + all its children)
+        $labelsToRemove = $this->getAllLabelsInHierarchyWithChildren($label);
+
         $updated = [];
         foreach ($transferIds as $transferId) {
             $transfer = $this->transferRepository->find(Uuid::fromRfc4122($transferId));
@@ -195,8 +227,13 @@ class TransferService
                 continue;
             }
 
-            $link = $transfer->getLinkForLabel($label);
-            if ($link instanceof LabelTransferLink) {
+            // Remove all labels in the hierarchy
+            foreach ($labelsToRemove as $labelToRemove) {
+                $link = $transfer->getLinkForLabel($labelToRemove);
+                if (! ($link instanceof LabelTransferLink)) {
+                    continue;
+                }
+
                 $transfer->removeLabelLink($link);
                 $this->entityManager->remove($link);
             }
@@ -207,6 +244,23 @@ class TransferService
         $this->entityManager->flush();
 
         return $updated;
+    }
+
+    /**
+     * Get all labels in the hierarchy with children (the label + all its children recursively).
+     *
+     * @return array<Label>
+     */
+    private function getAllLabelsInHierarchyWithChildren(Label $label): array
+    {
+        $labels = [$label];
+
+        // Add all children recursively
+        foreach ($label->getChildLabels() as $childLabel) {
+            $labels = array_merge($labels, $this->getAllLabelsInHierarchyWithChildren($childLabel));
+        }
+
+        return $labels;
     }
 
     /**

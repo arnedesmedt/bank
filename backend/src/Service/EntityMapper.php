@@ -57,17 +57,11 @@ class EntityMapper
 
         foreach ($transfer->getLabelTransferLinks() as $labelTransferLink) {
             $label     = $labelTransferLink->getLabel();
-            $linkUuid  = $labelTransferLink->getId();
             $labelUuid = $label->getId();
-            if ($linkUuid === null) {
-                continue;
-            }
-
             if ($labelUuid === null) {
                 continue;
             }
 
-            $linkIdStr  = $linkUuid->toRfc4122();
             $labelIdStr = $labelUuid->toRfc4122();
 
             // Only include in active labels if not archived
@@ -77,8 +71,9 @@ class EntityMapper
             }
 
             // Always include in labelLinks for UI display (archive/unarchive functionality)
+            // Use the label UUID as the ID, not the link UUID, for consistency with labelIds
             $transferApiResource->labelLinks[] = [
-                'id'        => $linkIdStr,
+                'id'        => $labelIdStr,
                 'name'      => $label->getName(),
                 'isManual'  => $labelTransferLink->isManual(),
                 'isArchived' => $labelTransferLink->isArchived(),
