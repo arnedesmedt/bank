@@ -1,8 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import type { TransferFilters } from '../components/ActionBar';
 
-const STORAGE_KEY = 'bank-transfer-filters';
-
 const DEFAULT_FILTERS: TransferFilters = {
     search: '',
     dateFrom: '',
@@ -14,12 +12,14 @@ const DEFAULT_FILTERS: TransferFilters = {
 /**
  * Hook for persisting transfer filters to localStorage
  * Automatically saves filter changes and restores them on component mount
+ * 
+ * @param storageKey - The localStorage key to use for storing filters (defaults to 'bank-transfer-filters')
  */
-export function usePersistedFilters(): [TransferFilters, (filters: TransferFilters) => void] {
+export function usePersistedFilters(storageKey: string = 'bank-transfer-filters'): [TransferFilters, (filters: TransferFilters) => void] {
     // Initialize filters synchronously from localStorage
     const getInitialFilters = (): TransferFilters => {
         try {
-            const stored = localStorage.getItem(STORAGE_KEY);
+            const stored = localStorage.getItem(storageKey);
             if (stored && stored !== 'undefined' && stored !== 'null') {
                 const parsedFilters = JSON.parse(stored);
                 // Validate that the parsed object has the expected structure
@@ -37,7 +37,7 @@ export function usePersistedFilters(): [TransferFilters, (filters: TransferFilte
             console.warn('Failed to load filters from localStorage:', error);
             // Clear corrupted data to prevent future errors
             try {
-                localStorage.removeItem(STORAGE_KEY);
+                localStorage.removeItem(storageKey);
             } catch (clearError) {
                 console.warn('Failed to clear corrupted localStorage:', clearError);
             }
@@ -78,7 +78,7 @@ export function usePersistedFilters(): [TransferFilters, (filters: TransferFilte
         prevFiltersRef.current = safeNewFilters;
         
         try {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(safeNewFilters));
+            localStorage.setItem(storageKey, JSON.stringify(safeNewFilters));
         } catch (error) {
             console.warn('Failed to save filters to localStorage:', error);
         }

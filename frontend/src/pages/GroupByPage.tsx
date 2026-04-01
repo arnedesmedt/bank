@@ -7,15 +7,18 @@ import { fetchLabels } from '../services/labelsService';
 import type { Label } from '../services/labelsService';
 import { ActionBar } from '../components/ActionBar';
 import type { TransferFilters } from '../components/ActionBar';
+import { usePersistedFilters } from '../hooks/usePersistedFilters';
 import { ResponsiveBar } from '@nivo/bar';
 
 /** Matches Nivo's internal BarDatum constraint: values must be string | number */
 type NivoBarDatum = { [key: string]: string | number };
 
-const EMPTY_FILTERS: TransferFilters = { search: '', dateFrom: '', dateTo: '', labelIds: [], accountIds: [] };
-
 type GroupByMode = 'period' | 'label' | 'label_and_period';
 type PeriodMode = 'month' | 'quarter' | 'year';
+
+// Local storage keys for group-by preferences
+const GROUP_BY_STORAGE_KEY = 'bank-group-by-mode';
+const PERIOD_STORAGE_KEY = 'bank-group-by-period';
 
 // Categorical colours for multi-label chart
 const LABEL_COLOURS = [
@@ -50,13 +53,48 @@ const GroupByPage: React.FC = () => {
     const { accessToken } = useAuth();
     const navigate = useNavigate();
 
-    const [filters, setFilters]   = useState<TransferFilters>(EMPTY_FILTERS);
-    const [groupBy, setGroupBy]   = useState<GroupByMode>('period');
-    const [period, setPeriod]     = useState<PeriodMode>('month');
+    const [filters, setFilters]   = usePersistedFilters('bank-group-by-filters');
+    
+    // Persist group-by mode and period settings
+    const [groupBy, setGroupBy]   = useState<GroupByMode>(() => {
+        try {
+            const stored = localStorage.getItem(GROUP_BY_STORAGE_KEY);
+            return (stored as GroupByMode) || 'period';
+        } catch {
+            return 'period';
+        }
+    });
+    const [period, setPeriod]     = useState<PeriodMode>(() => {
+        try {
+            const stored = localStorage.getItem(PERIOD_STORAGE_KEY);
+            return (stored as PeriodMode) || 'month';
+        } catch {
+            return 'month';
+        }
+    });
+    
     const [labels, setLabels]     = useState<Label[]>([]);
     const [data, setData]         = useState<GroupByResult[]>([]);
     const [loading, setLoading]   = useState(false);
     const [error, setError]       = useState<string | null>(null);
+
+    // Save group-by mode changes to localStorage
+    useEffect(() => {
+        try {
+            localStorage.setItem(GROUP_BY_STORAGE_KEY, groupBy);
+        } catch (error) {
+            console.warn('Failed to save group-by mode to localStorage:', error);
+        }
+    }, [groupBy]);
+
+    // Save period mode changes to localStorage
+    useEffect(() => {
+        try {
+            localStorage.setItem(PERIOD_STORAGE_KEY, period);
+        } catch (error) {
+            console.warn('Failed to save period mode to localStorage:', error);
+        }
+    }, [period]);
 
     useEffect(() => {
         if (!accessToken) return;
