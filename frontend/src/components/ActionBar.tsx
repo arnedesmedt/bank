@@ -309,34 +309,65 @@ export function ActionBar({
                                     
                                     {/* Labels list */}
                                     <div className="max-h-48 overflow-y-auto">
-                                        {filteredLabels.length > 0 ? (
-                                            filteredLabels.map((label) => (
-                                                <button
-                                                    key={label.id}
-                                                    type="button"
-                                                    role="option"
-                                                    aria-selected={filters.labelIds.includes(label.id)}
-                                                    onClick={() => toggleLabel(label.id)}
-                                                    className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center gap-2 ${
-                                                        filters.labelIds.includes(label.id) ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
-                                                    }`}
-                                                >
-                                                    <span
-                                                        className={`w-4 h-4 border rounded flex-shrink-0 flex items-center justify-center ${
-                                                            filters.labelIds.includes(label.id)
-                                                                ? 'bg-blue-600 border-blue-600'
-                                                                : 'border-gray-300'
-                                                        }`}
-                                                    >
-                                                        {filters.labelIds.includes(label.id) && (
-                                                            <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                                                                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                        {/* Selected labels section */}
+                                        {filters.labelIds.length > 0 && (
+                                            <>
+                                                <div className="px-3 py-2 text-xs font-medium text-gray-500 bg-gray-50 border-b border-gray-100">
+                                                    Selected Labels ({filters.labelIds.length})
+                                                </div>
+                                                {filters.labelIds.map((labelId) => {
+                                                    const label = availableLabels.find(l => l.id === labelId);
+                                                    if (!label) return null;
+                                                    return (
+                                                        <button
+                                                            key={labelId}
+                                                            type="button"
+                                                            role="option"
+                                                            aria-selected={true}
+                                                            onClick={() => toggleLabel(labelId)}
+                                                            className="w-full text-left px-3 py-2 text-sm hover:bg-red-50 flex items-center gap-2 bg-blue-50 text-blue-700 border-b border-gray-100"
+                                                        >
+                                                            <span className="w-4 h-4 border rounded flex-shrink-0 flex items-center justify-center bg-blue-600 border-blue-600">
+                                                                <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                                                </svg>
+                                                            </span>
+                                                            <span className="flex-1">{label.name}</span>
+                                                            <svg className="w-3 h-3 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                                                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                                                             </svg>
-                                                        )}
-                                                    </span>
-                                                    {label.name}
-                                                </button>
-                                            ))
+                                                        </button>
+                                                    );
+                                                })}
+                                                {!labelSearch && (
+                                                    <div className="px-3 py-2 text-xs text-gray-400 text-center border-b border-gray-100">
+                                                        ──
+                                                    </div>
+                                                )}
+                                            </>
+                                        )}
+                                        
+                                        {/* Available labels */}
+                                        {filteredLabels.length > 0 ? (
+                                            filteredLabels.map((label) => {
+                                                // Skip if already in selected section
+                                                if (filters.labelIds.includes(label.id)) return null;
+                                                
+                                                return (
+                                                    <button
+                                                        key={label.id}
+                                                        type="button"
+                                                        role="option"
+                                                        aria-selected={false}
+                                                        onClick={() => toggleLabel(label.id)}
+                                                        className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center gap-2 text-gray-700"
+                                                    >
+                                                        <span className="w-4 h-4 border rounded flex-shrink-0 flex items-center justify-center border-gray-300">
+                                                        </span>
+                                                        {label.name}
+                                                    </button>
+                                                );
+                                            })
                                         ) : (
                                             <div className="px-3 py-4 text-sm text-gray-500 text-center">
                                                 {labelSearch ? 'No labels found' : 'No labels available'}
