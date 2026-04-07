@@ -7,6 +7,7 @@ import Amount from '../components/Amount';
 
 interface LabelLink {
     id: string;
+    labelId?: string;  // Label UUID for reference
     name: string;
     isManual: boolean;
     isArchived: boolean;
@@ -421,11 +422,12 @@ const TransferDetailPage: React.FC = () => {
                             >
                                 <button
                                     onClick={(e) => {
+                                        const labelId = link.labelId || link.id; // Use labelId if available, fallback to link.id
                                         if (e.ctrlKey || e.metaKey) {
                                             e.preventDefault();
-                                            window.open(`/labels/${link.id}`, '_blank');
+                                            window.open(`/labels/${labelId}`, '_blank');
                                         } else {
-                                            navigate(`/labels/${link.id}`);
+                                            navigate(`/labels/${labelId}`);
                                         }
                                     }}
                                     className="hover:underline"
