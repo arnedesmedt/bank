@@ -86,6 +86,7 @@ export async function updateBankAccount(
   accountName: string,
   accessToken: string,
   accountNumber?: string | null,
+  isInternal?: boolean,
 ): Promise<BankAccount> {
   const response = await fetch(`${API_URL}/api/bank-accounts/${id}`, {
     method: 'PUT',
@@ -94,7 +95,7 @@ export async function updateBankAccount(
       'Content-Type': 'application/json',
       Accept: 'application/json',
     },
-    body: JSON.stringify({ accountName, accountNumber: accountNumber ?? null }),
+    body: JSON.stringify({ accountName, accountNumber: accountNumber ?? null, isInternal }),
   });
 
   if (!response.ok) {

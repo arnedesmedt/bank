@@ -143,6 +143,11 @@ class EntityMapper
         $bankAccount->setAccountName($bankAccountApiResource->accountName);
         $bankAccount->setAccountNumber($bankAccountApiResource->accountNumber);
 
+        // Handle isInternal field if provided
+        if (isset($bankAccountApiResource->isInternal)) {
+            $bankAccount->setIsInternal($bankAccountApiResource->isInternal);
+        }
+
         return $bankAccount;
     }
 

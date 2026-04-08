@@ -93,6 +93,38 @@ class TransferRepository extends ServiceEntityRepository
         return $result;
     }
 
+    /**
+     * Update internal status for all transfers involving a specific account.
+     * A transfer is marked as internal if both the from and to accounts are internal.
+     */
+    public function updateTransferInternalStatusForAccount(BankAccount $bankAccount): void
+    {
+        // Find all transfers where this account is either from or to account
+        /** @var array<Transfer> $transfers */
+        $transfers = $this->createQueryBuilder('t')
+            ->andWhere('t.fromAccount = :account OR t.toAccount = :account')
+            ->andWhere('t.isReversed = false')
+            ->setParameter('account', $bankAccount)
+            ->getQuery()
+            ->getResult();
+
+        foreach ($transfers as $transfer) {
+            $fromAccount = $transfer->getFromAccount();
+            $toAccount   = $transfer->getToAccount();
+
+            // Mark as internal if both accounts are internal
+            $shouldBeInternal = $fromAccount->isInternal() && $toAccount->isInternal();
+
+            // Only update if the status needs to change
+            if ($transfer->isInternal() === $shouldBeInternal) {
+                continue;
+            }
+
+            $transfer->setIsInternal($shouldBeInternal);
+            $this->save($transfer, true);
+        }
+    }
+
     /** @return array<Transfer> */
     #[Override]
     public function findAll(int $limit = 100, int $offset = 0): array
@@ -351,11 +383,9 @@ class TransferRepository extends ServiceEntityRepository
 
         // Handle "no labels" filter
         if ($noLabelsOnly) {
-            // Left join to ensure we get transfers without labels
-            $queryBuilder->leftJoin('t.labelTransferLinks', 'ltl_no_labels')
-                ->leftJoin('ltl_no_labels.label', 'lbl_no_labels')
-                ->andWhere('lbl_no_labels.uuid IS NULL')
-                ->orWhere('ltl_no_labels.isArchived = true');
+            // Left join only non-archived label transfer links; if none exist the alias is NULL
+            $queryBuilder->leftJoin('t.labelTransferLinks', 'ltl_no_labels', 'WITH', 'ltl_no_labels.isArchived = false')
+                ->andWhere('ltl_no_labels.uuid IS NULL');
         }
 
         if ($accountIds !== []) {

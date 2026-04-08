@@ -10,8 +10,10 @@ import type { Label } from '../services/labelsService';
 import { useAuth } from '../contexts/AuthContext';
 import Amount from '../components/Amount';
 import { ActionBar } from '../components/ActionBar';
-import type { TransferFilters, LabelOption } from '../components/ActionBar';
+import type { TransferFilters, LabelOption, BulkAction } from '../components/ActionBar';
 import { useNavigate } from 'react-router-dom';
+import type { Transfer } from '../services/transfersService';
+import { bulkAction } from '../services/transfersService';
 
 interface Props {
     bankAccountId: string;
@@ -36,6 +38,12 @@ const BankAccountDetailPage: React.FC<Props> = ({ bankAccountId, onBack }) => {
     const [transfers, setTransfers] = useState<BankAccountTransfer[]>([]);
     const [availableLabels, setAvailableLabels] = useState<LabelOption[]>([]);
     const [filters, setFilters] = useState<TransferFilters>(EMPTY_FILTERS);
+    const [selectedTransferIds, setSelectedTransferIds] = useState<string[]>([]);
+    
+    // Refund linking state
+    const [linkRefundParentId, setLinkRefundParentId] = useState<string | null>(null);
+    const [linkRefundSelected, setLinkRefundSelected] = useState<string[]>([]);
+    
     const [mode, setMode] = useState<ViewMode>('view');
     const [loading, setLoading] = useState(true);
     const [loadingTransfers, setLoadingTransfers] = useState(false);
@@ -46,6 +54,7 @@ const BankAccountDetailPage: React.FC<Props> = ({ bankAccountId, onBack }) => {
 
     // Form state for edit mode
     const [editName, setEditName] = useState('');
+    const [editIsInternal, setEditIsInternal] = useState(false);
 
     const loadAccount = useCallback(async () => {
         if (!accessToken) return;
@@ -55,6 +64,7 @@ const BankAccountDetailPage: React.FC<Props> = ({ bankAccountId, onBack }) => {
             const data = await fetchBankAccount(bankAccountId, accessToken);
             setAccount(data);
             setEditName(data.accountName ?? '');
+            setEditIsInternal(data.isInternal);
         } catch {
             setError('Failed to load bank account.');
         } finally {
@@ -116,7 +126,7 @@ const BankAccountDetailPage: React.FC<Props> = ({ bankAccountId, onBack }) => {
         setSubmitting(true);
         setFormError(null);
         try {
-            const updated = await updateBankAccount(bankAccountId, editName.trim(), accessToken, account.accountNumber);
+            const updated = await updateBankAccount(bankAccountId, editName.trim(), accessToken, account.accountNumber, editIsInternal);
             setAccount(updated);
             setMode('view');
             setSuccessMessage('Bank account updated successfully.');
@@ -132,8 +142,97 @@ const BankAccountDetailPage: React.FC<Props> = ({ bankAccountId, onBack }) => {
     const handleCancelEdit = () => {
         setMode('view');
         setFormError(null);
-        if (account) setEditName(account.accountName ?? '');
+        if (account) {
+            setEditName(account.accountName ?? '');
+            setEditIsInternal(account.isInternal);
+        }
     };
+
+    const handleBulkAction = useCallback(async (action: BulkAction) => {
+        if (!accessToken) return;
+        
+        // Handle refund linking mode
+        if (action.action === 'mark_refund' && selectedTransferIds.length === 1) {
+            // Start refund linking mode with the selected transfer as parent
+            setLinkRefundParentId(selectedTransferIds[0]);
+            setSelectedTransferIds([]);
+            return;
+        }
+        
+        try {
+            // Import the bulkAction function from transfersService
+            const { bulkAction } = await import('../services/transfersService');
+            
+            const request = {
+                action: action.action,
+                transferIds: selectedTransferIds,
+                labelId: action.labelId,
+                parentTransferId: action.parentTransferId,
+            };
+            
+            await bulkAction(request, accessToken);
+            
+            // Reload transfers after bulk action
+            await loadTransfers(filters);
+            
+            // Clear selection
+            setSelectedTransferIds([]);
+            
+            // Show success message
+            setSuccessMessage('Bulk action completed successfully.');
+            setTimeout(() => setSuccessMessage(null), 3000);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Bulk action failed');
+        }
+    }, [accessToken, selectedTransferIds, filters, loadTransfers]);
+
+    // Refund linking helper functions
+    const linkRefundParent = linkRefundParentId
+        ? (transfers.find((t) => t.id === linkRefundParentId) ?? null)
+        : null;
+
+    const alreadyChildrenOfParent = new Set(linkRefundParent?.childRefundIds ?? []);
+
+    const parentAmount = parseFloat(linkRefundParent?.amount ?? '0');
+    const linkRefundSum = linkRefundSelected.reduce((sum, id) => {
+        const t = transfers.find((x) => x.id === id);
+        return sum + (t ? parseFloat(t.amount) : 0);
+    }, 0);
+    const linkRefundNewAmount = parentAmount + linkRefundSum;
+
+    const toggleRefundSelection = (id: string) =>
+        setLinkRefundSelected((prev) =>
+            prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+        );
+
+    const cancelLinkRefund = () => {
+        setLinkRefundParentId(null);
+        setLinkRefundSelected([]);
+    };
+
+    const handleConfirmLinkRefunds = useCallback(async () => {
+        if (!accessToken || !linkRefundParentId || linkRefundSelected.length === 0) return;
+        
+        try {
+            await bulkAction({
+                action: 'mark_refund',
+                transferIds: linkRefundSelected,
+                parentTransferId: linkRefundParentId,
+            }, accessToken);
+            
+            setLinkRefundParentId(null);
+            setLinkRefundSelected([]);
+            setSelectedTransferIds([]);
+            
+            // Reload transfers after linking refunds
+            await loadTransfers(filters);
+            
+            setSuccessMessage('Refunds linked successfully.');
+            setTimeout(() => setSuccessMessage(null), 3000);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to link refunds');
+        }
+    }, [accessToken, linkRefundParentId, linkRefundSelected, filters, loadTransfers]);
 
     const formatDate = (dateStr: string) =>
         new Date(dateStr).toLocaleDateString('en-GB', {
@@ -268,6 +367,20 @@ const BankAccountDetailPage: React.FC<Props> = ({ bankAccountId, onBack }) => {
                                 aria-required="true"
                             />
                         </div>
+                        <div>
+                            <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    checked={editIsInternal}
+                                    onChange={(e) => setEditIsInternal(e.target.checked)}
+                                    className="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                                />
+                                <span>Mark as internal account (own account)</span>
+                            </label>
+                            <p className="mt-1 text-xs text-gray-500">
+                                Internal accounts are used for transfers between your own accounts and are excluded from some analytics.
+                            </p>
+                        </div>
                         <div className="flex gap-3">
                             <button
                                 type="submit"
@@ -322,7 +435,64 @@ const BankAccountDetailPage: React.FC<Props> = ({ bankAccountId, onBack }) => {
                     filters={filters}
                     onFiltersChange={setFilters}
                     availableLabels={availableLabels}
+                    selectedCount={selectedTransferIds.length}
+                    onBulkAction={handleBulkAction}
                 />
+
+                {/* Bulk action menu */}
+                {selectedTransferIds.length > 0 && (
+                    <div className="px-6 py-3 bg-gray-50 border-b border-gray-200 flex items-center gap-3">
+                        <span className="text-sm text-gray-600">
+                            {selectedTransferIds.length} transfer{selectedTransferIds.length !== 1 ? 's' : ''} selected
+                        </span>
+                        
+                        {selectedTransferIds.length === 1 && (
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setLinkRefundParentId(selectedTransferIds[0] ?? null);
+                                    setLinkRefundSelected([]);
+                                }}
+                                className="text-xs bg-white/20 hover:bg-white/30 rounded px-3 py-1 flex items-center gap-1"
+                                aria-label="Link refund transfers"
+                            >
+                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                                </svg>
+                                Link Refunds
+                            </button>
+                        )}
+
+                        {selectedTransferIds.some((id) => transfers.find((t) => t.id === id)?.parentTransferId) && (
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    const selectedTransfers = selectedTransferIds.map(id => transfers.find(t => t.id === id)).filter(Boolean);
+                                    const parentIds = selectedTransfers.map(t => t?.parentTransferId).filter(Boolean);
+                                    if (parentIds.length > 0) {
+                                        setLinkRefundParentId(parentIds[0] ?? null);
+                                        setLinkRefundSelected(selectedTransferIds);
+                                    }
+                                }}
+                                className="text-xs bg-white/20 hover:bg-white/30 rounded px-3 py-1 flex items-center gap-1"
+                                aria-label="Unlink refund transfers"
+                            >
+                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                                </svg>
+                                Unlink Refunds
+                            </button>
+                        )}
+
+                        <button
+                            type="button"
+                            onClick={() => setSelectedTransferIds([])}
+                            className="text-xs text-gray-500 hover:text-gray-700"
+                        >
+                            Clear selection
+                        </button>
+                    </div>
+                )}
 
                 <div>
                     {loadingTransfers ? (
@@ -341,6 +511,21 @@ const BankAccountDetailPage: React.FC<Props> = ({ bankAccountId, onBack }) => {
                             <table className="min-w-full divide-y divide-gray-200 text-sm" aria-label="Transaction history">
                                 <thead className="bg-gray-50">
                                     <tr>
+                                        <th scope="col" className="px-4 py-3 w-8">
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedTransferIds.length === transfers.length && transfers.length > 0}
+                                                onChange={(e) => {
+                                                    if (e.target.checked) {
+                                                        setSelectedTransferIds(transfers.map(t => t.id));
+                                                    } else {
+                                                        setSelectedTransferIds([]);
+                                                    }
+                                                }}
+                                                className="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                                                aria-label="Select all transfers"
+                                            />
+                                        </th>
                                         <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
                                         <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reference</th>
                                         <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Counterparty</th>
@@ -352,45 +537,118 @@ const BankAccountDetailPage: React.FC<Props> = ({ bankAccountId, onBack }) => {
                                     {transfers.map((t) => {
                                         const isOutgoing = t.fromAccountNumber === account.accountNumber;
                                         const counterparty = isOutgoing
-                                            ? (t.toAccountName ?? t.toAccountNumber ?? '—')
-                                            : (t.fromAccountName ?? t.fromAccountNumber ?? '—');
-                                        const absAmount = t.amount.replace(/^-/, '');
+                                            ? (t.toAccountName ?? t.toAccountNumber ?? "â")
+                                            : (t.fromAccountName ?? t.fromAccountNumber ?? "â");
+                                        const absAmount = t.amount.replace(/^-/, "");
                                         const signedAmount = isOutgoing ? `-${absAmount}` : absAmount;
+                                        
+                                        // Refund linking state
+                                        const isLinking = linkRefundParentId !== null;
+                                        const isThisParent = t.id === linkRefundParentId;
+                                        const isAlreadyChild = alreadyChildrenOfParent.has(t.id);
+                                        const isSelectedAsRefund = linkRefundSelected.includes(t.id);
+                                        const isLinkedElsewhere = !isThisParent && !isAlreadyChild && !!t.parentTransferId;
+                                        
+                                        // Row visual class
+                                        let rowClass = "transition-colors ";
+                                        if (isLinking) {
+                                            if (isThisParent) {
+                                                rowClass += "bg-blue-50 ring-2 ring-inset ring-blue-400 cursor-default";
+                                            } else if (isAlreadyChild) {
+                                                rowClass += "bg-indigo-50 opacity-60 cursor-default";
+                                            } else if (isSelectedAsRefund) {
+                                                rowClass += "bg-amber-50 cursor-pointer hover:bg-amber-100";
+                                            } else {
+                                                rowClass += `cursor-pointer hover:bg-green-50 ${t.isInternal ? "bg-gray-50" : ""}`;
+                                            }
+                                        } else {
+                                            // Child transfers get indigo left border highlight
+                                            const childHighlight = t.parentTransferId ? 'border-l-4 border-indigo-200' : '';
+                                            rowClass += `cursor-pointer hover:bg-blue-50 ${t.isInternal ? "bg-gray-50" : ""} ${selectedTransferIds.includes(t.id) ? "bg-blue-50" : ""} ${childHighlight}`;
+                                        }
+                                        
+                                        const handleRowClick = (e: React.MouseEvent) => {
+                                            if (isLinking) {
+                                                if (isThisParent || isAlreadyChild) return;
+                                                toggleRefundSelection(t.id);
+                                            } else {
+                                                if (e.ctrlKey || e.metaKey) {
+                                                    e.preventDefault();
+                                                    window.open("/transfers/" + t.id, "_blank");
+                                                } else {
+                                                    navigate("/transfers/" + t.id);
+                                                }
+                                            }
+                                        };
+                                        
                                         return (
                                             <tr
                                                 key={t.id}
-                                                className="hover:bg-gray-50 cursor-pointer"
-                                                onClick={(e) => {
-                                                    if (e.ctrlKey || e.metaKey) {
-                                                        // Ctrl+click opens in new tab
-                                                        e.preventDefault();
-                                                        window.open(`/transfers/${t.id}`, '_blank');
-                                                    } else {
-                                                        navigate(`/transfers/${t.id}`);
-                                                    }
-                                                }}
+                                                className={rowClass}
+                                                onClick={handleRowClick}
                                             >
-                                                <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{formatDate(t.date)}</td>
-                                                <td className="px-4 py-3 text-gray-700 max-w-xs truncate">{t.reference || '—'}</td>
-                                                <td className="px-4 py-3 text-gray-700 whitespace-nowrap">{counterparty}</td>
+                                                <td className="px-4 py-3 w-8" onClick={(e) => e.stopPropagation()}>
+                                                    {isLinking ? (
+                                                        isThisParent ? (
+                                                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-bold bg-blue-600 text-white">P</span>
+                                                        ) : isAlreadyChild ? (
+                                                            <input type="checkbox" checked disabled className="h-4 w-4 text-indigo-400 rounded border-gray-300 opacity-50" />
+                                                        ) : (
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={isSelectedAsRefund}
+                                                                onChange={() => toggleRefundSelection(t.id)}
+                                                                className="h-4 w-4 text-amber-500 rounded border-gray-300 focus:ring-amber-400"
+                                                                aria-label={`Select as refund: ${t.id}`}
+                                                            />
+                                                        )
+                                                    ) : (
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={selectedTransferIds.includes(t.id)}
+                                                            onChange={(e) => {
+                                                                if (e.target.checked) {
+                                                                    setSelectedTransferIds(prev => [...prev, t.id]);
+                                                                } else {
+                                                                    setSelectedTransferIds(prev => prev.filter(id => id !== t.id));
+                                                                }
+                                                            }}
+                                                            className="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                                                            aria-label={`Select transfer ${t.id}`}
+                                                        />
+                                                    )}
+                                                </td>
+                                                <td className="px-4 py-3 text-sm text-gray-900">
+                                                    {formatDate(t.date)}
+                                                </td>
+                                                <td className="px-4 py-3 text-sm text-gray-900 max-w-xs truncate">
+                                                    <div className="flex items-center gap-2">
+                                                        <span>{t.reference || "â"}</span>
+                                                        {t.parentTransferId && (
+                                                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-100 text-indigo-700">Refund</span>
+                                                        )}
+                                                    </div>
+                                                </td>
+                                                <td className="px-4 py-3 text-sm text-gray-900">
+                                                    {counterparty}
+                                                </td>
                                                 <td className="px-4 py-3">
                                                     <div className="flex flex-wrap gap-1">
-                                                        {(t.labelLinks ?? []).map((link) => (
+                                                        {(t.labelLinks ?? []).filter((link) => !link.isArchived).map((link) => (
                                                             <button
                                                                 key={link.id}
-                                                                type="button"
-                                                                onClick={(e) => { 
-                                                                    e.stopPropagation(); 
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
                                                                     if (e.ctrlKey || e.metaKey) {
                                                                         e.preventDefault();
-                                                                        window.open(`/labels/${link.id}`, '_blank');
+                                                                        window.open("/labels/" + link.id, "_blank");
                                                                     } else {
-                                                                        navigate(`/labels/${link.id}`);
+                                                                        navigate("/labels/" + link.id);
                                                                     }
                                                                 }}
-                                                                title={link.isManual ? 'Manually assigned' : 'Auto-assigned'}
+                                                                title={link.isManual ? "Manually assigned" : "Auto-assigned"}
                                                                 className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium cursor-pointer hover:opacity-75 transition-opacity ${
-                                                                    link.isManual ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'
+                                                                    link.isManual ? "bg-purple-100 text-purple-800" : "bg-blue-100 text-blue-800"
                                                                 }`}
                                                             >
                                                                 {link.isManual ? '🖊 ' : '⚙ '}{link.name}
@@ -398,7 +656,17 @@ const BankAccountDetailPage: React.FC<Props> = ({ bankAccountId, onBack }) => {
                                                         ))}
                                                     </div>
                                                 </td>
-                                                <td className="px-4 py-3 text-right">
+                                                <td
+                                                    className="px-4 py-3 text-right cursor-pointer"
+                                                    onClick={(e) => {
+                                                        if (e.ctrlKey || e.metaKey) {
+                                                            e.preventDefault();
+                                                            window.open("/transfers/" + t.id, "_blank");
+                                                        } else {
+                                                            navigate("/transfers/" + t.id);
+                                                        }
+                                                    }}
+                                                >
                                                     <Amount amount={signedAmount} />
                                                 </td>
                                             </tr>
@@ -409,6 +677,34 @@ const BankAccountDetailPage: React.FC<Props> = ({ bankAccountId, onBack }) => {
                         </div>
                     )}
                 </div>
+                
+                {/* Refund linking confirmation UI */}
+                {linkRefundParentId && (
+                    <div className="fixed bottom-4 left-1/2 -translate-x-1/2 bg-indigo-700 text-white px-6 py-3 rounded-full shadow-xl flex items-center gap-4 z-40">
+                        <span className="text-sm font-medium">
+                            {linkRefundSelected.length} refund{linkRefundSelected.length !== 1 ? 's' : ''} selected
+                        </span>
+                        {linkRefundSelected.length > 0 && (
+                            <>
+                                <span className="text-xs text-indigo-200">
+                                    New total: <Amount amount={linkRefundNewAmount.toFixed(2)} />
+                                </span>
+                                <button
+                                    onClick={handleConfirmLinkRefunds}
+                                    className="px-3 py-1 bg-green-600 hover:bg-green-700 text-white text-xs font-medium rounded transition-colors"
+                                >
+                                    Confirm
+                                </button>
+                            </>
+                        )}
+                        <button
+                            onClick={cancelLinkRefund}
+                            className="px-3 py-1 bg-indigo-600 hover:bg-indigo-800 text-white text-xs font-medium rounded transition-colors"
+                        >
+                            Cancel
+                        </button>
+                    </div>
+                )}
             </div>
         </div>
     );

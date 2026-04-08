@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { fetchBankAccounts, createBankAccount } from '../services/bankAccountsService';
 import type { BankAccount } from '../services/bankAccountsService';
 import EmptyOrErrorState from '../components/EmptyOrErrorState';
@@ -6,19 +7,16 @@ import { useAuth } from '../contexts/AuthContext';
 import BankAccountDetailPage from './BankAccountDetailPage';
 import Amount from '../components/Amount';
 
-type PageView = 'list' | 'detail' | 'add';
-
 /**
  * T023/T027/T029 [US3]: Bank account list page with clickable rows leading to detail/edit page.
  * Add button opens an inline add form. Empty and error states clearly shown.
  */
 const BankAccountsListPage: React.FC = () => {
     const { accessToken } = useAuth();
+    const navigate = useNavigate();
     const [accounts, setAccounts] = useState<BankAccount[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | undefined>(undefined);
-    const [view, setView] = useState<PageView>('list');
-    const [selectedId, setSelectedId] = useState<string | null>(null);
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
     const [search, setSearch] = useState('');
 
@@ -52,20 +50,11 @@ const BankAccountsListPage: React.FC = () => {
     };
 
     const handleRowClick = (id: string) => {
-        setSelectedId(id);
-        setView('detail');
+        navigate(`/accounts/${id}`);
     };
 
     const handleBackToList = () => {
-        setView('list');
         setSelectedId(null);
-    };
-
-    const handleDeleted = () => {
-        setView('list');
-        setSelectedId(null);
-        loadAccounts();
-        showSuccess('Bank account deleted successfully.');
     };
 
     const handleAddSubmit = async (e: React.FormEvent) => {
@@ -82,7 +71,6 @@ const BankAccountsListPage: React.FC = () => {
                 { accountName: addName.trim(), accountNumber: addNumber.trim() || null },
                 accessToken,
             );
-            setView('list');
             setAddName('');
             setAddNumber('');
             loadAccounts();
@@ -101,16 +89,6 @@ const BankAccountsListPage: React.FC = () => {
             (a.accountName ?? '').toLowerCase().includes(search.trim().toLowerCase()),
           );
 
-    // ── Detail view ────────────────────────────────────────────────────────────
-    if (view === 'detail' && selectedId) {
-        return (
-            <BankAccountDetailPage
-                bankAccountId={selectedId}
-                onBack={handleBackToList}
-                onDeleted={handleDeleted}
-            />
-        );
-    }
 
     // ── Loading state ──────────────────────────────────────────────────────────
     if (loading) {
@@ -124,101 +102,12 @@ const BankAccountsListPage: React.FC = () => {
     return (
         <div className="space-y-4">
             {/* ── Add form ───────────────────────────────────────────────────── */}
-            {view === 'add' && (
-                <div className="bg-white rounded-lg shadow-md p-6">
-                    <h2 className="text-lg font-semibold text-gray-800 mb-4">Add Bank Account</h2>
-                    {addError && (
-                        <div
-                            className="mb-4 bg-red-50 border border-red-200 rounded p-3 text-red-800 text-sm"
-                            role="alert"
-                        >
-                            {addError}
-                        </div>
-                    )}
-                    <form
-                        onSubmit={(e) => void handleAddSubmit(e)}
-                        className="space-y-4"
-                        aria-label="Add bank account form"
-                    >
-                        <div>
-                            <label
-                                htmlFor="add-account-name"
-                                className="block text-sm font-medium text-gray-700 mb-1"
-                            >
-                                Account Name <span aria-hidden="true" className="text-red-500">*</span>
-                            </label>
-                            <input
-                                id="add-account-name"
-                                type="text"
-                                value={addName}
-                                onChange={(e) => setAddName(e.target.value)}
-                                required
-                                maxLength={255}
-                                placeholder="e.g. My Savings Account"
-                                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-                                data-testid="add-account-name-input"
-                                aria-required="true"
-                            />
-                        </div>
-                        <div>
-                            <label
-                                htmlFor="add-account-number"
-                                className="block text-sm font-medium text-gray-700 mb-1"
-                            >
-                                Account Number{' '}
-                                <span className="text-gray-400 text-xs">(optional, Belgian IBAN)</span>
-                            </label>
-                            <input
-                                id="add-account-number"
-                                type="text"
-                                value={addNumber}
-                                onChange={(e) => setAddNumber(e.target.value)}
-                                placeholder="e.g. BE68 5390 0754 7034"
-                                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-400"
-                                data-testid="add-account-number-input"
-                            />
-                        </div>
-                        <div className="flex gap-3">
-                            <button
-                                type="submit"
-                                disabled={addSubmitting}
-                                className="px-5 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white text-sm font-medium rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400"
-                                data-testid="add-account-submit-button"
-                            >
-                                {addSubmitting ? 'Adding…' : 'Add Account'}
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    setView('list');
-                                    setAddError(null);
-                                    setAddName('');
-                                    setAddNumber('');
-                                }}
-                                className="px-5 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 text-sm font-medium rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-gray-400"
-                                data-testid="cancel-add-button"
-                            >
-                                Cancel
-                            </button>
-                        </div>
-                    </form>
-                </div>
-            )}
-
             {/* ── List ──────────────────────────────────────────────────────── */}
-            {view === 'list' && (
-                <div className="bg-white rounded-lg shadow-md">
-                    <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-                        <h1 className="text-2xl font-bold text-gray-800">Bank Accounts</h1>
-                        <button
-                            onClick={() => setView('add')}
-                            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400"
-                            data-testid="add-bank-account-button"
-                        >
-                            + Add Account
-                        </button>
-                    </div>
+            <div className="bg-white rounded-lg shadow-md">
+                <div className="px-6 py-4 border-b border-gray-200">
+                    <h1 className="text-2xl font-bold text-gray-800">Bank Accounts</h1>
 
+|                </div>
                     {/* ── Action bar ────────────────────────────────────────── */}
                     <div className="px-6 py-3 border-b border-gray-200 bg-gray-50 flex items-center gap-3">
                         <div className="relative flex-1 max-w-sm">
@@ -257,9 +146,7 @@ const BankAccountsListPage: React.FC = () => {
                             <div className="text-center py-12">
                                 <p className="text-gray-500 text-sm mb-4">No bank accounts found.</p>
                                 <button
-                                    onClick={() => setView('add')}
                                     className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400"
-                                    data-testid="empty-add-bank-account-button"
                                 >
                                     Add your first account
                                 </button>
@@ -326,7 +213,7 @@ const BankAccountsListPage: React.FC = () => {
                         )}
                     </div>
                 </div>
-            )}
+            )
         </div>
     );
 };

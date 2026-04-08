@@ -277,8 +277,9 @@ export function ActionBar({
                     </div>
 
                     {showAmountFilter && (
-                    {/* Amount filter */}
-                    <div className="flex items-center gap-2">
+                        <>
+                        {/* Amount filter */}
+                        <div className="flex items-center gap-2">
                         <select
                             value={filters.amountOperator}
                             onChange={(e) => {
@@ -309,7 +310,8 @@ export function ActionBar({
                             }`}
                             aria-label="Amount value"
                         />
-                    </div>
+                        </div>
+                        </>
                     )}
 
                     

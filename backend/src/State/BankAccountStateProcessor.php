@@ -9,6 +9,7 @@ use ApiPlatform\State\ProcessorInterface;
 use App\ApiResource\BankAccountApiResource;
 use App\Entity\BankAccount;
 use App\Repository\BankAccountRepository;
+use App\Repository\TransferRepository;
 use App\Service\EntityMapper;
 use App\Service\LabelingService;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
@@ -26,6 +27,7 @@ class BankAccountStateProcessor implements ProcessorInterface
         private readonly BankAccountRepository $bankAccountRepository,
         private readonly EntityMapper $entityMapper,
         private readonly LabelingService $labelingService,
+        private readonly TransferRepository $transferRepository,
     ) {
     }
 
@@ -48,8 +50,17 @@ class BankAccountStateProcessor implements ProcessorInterface
                 throw new NotFoundHttpException('BankAccount not found');
             }
 
+            // Check if internal status is changing
+            $oldInternalStatus = $bankAccount->isInternal();
             $this->entityMapper->mapDtoToBankAccount($data, $bankAccount);
+            $newInternalStatus = $bankAccount->isInternal();
+
             $this->bankAccountRepository->save($bankAccount, true);
+
+            // Update internal status for transfers if account internal status changed
+            if ($oldInternalStatus !== $newInternalStatus) {
+                $this->transferRepository->updateTransferInternalStatusForAccount($bankAccount);
+            }
 
             // FR-011: Re-evaluate automatic label links for labels linked to this bank account
             $affectedLabels = $bankAccount->getLinkedLabels()->toArray();

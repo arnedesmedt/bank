@@ -155,6 +155,11 @@ function LabelManager() {
     return account != null ? `${account.accountName} (${account.accountNumber})` : id;
   };
 
+  const getChildLabelNames = (childLabelIds: string[]): string[] =>
+    childLabelIds
+      .map((id) => labels.find((l) => l.id === id)?.name)
+      .filter((name): name is string => name !== undefined);
+
   // ── Derived filtered list ──────────────────────────────────────────────
   const filteredLabels = search.trim() === ''
     ? labels
@@ -420,6 +425,15 @@ function LabelManager() {
                             <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
                               child of {label.parentLabelName}
                             </span>
+                          </div>
+                        )}
+                        {label.childLabelIds.length > 0 && (
+                          <div className="mt-1 flex flex-wrap gap-1">
+                            {getChildLabelNames(label.childLabelIds).map((childName) => (
+                              <span key={childName} className="text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full">
+                                ↳ {childName}
+                              </span>
+                            ))}
                           </div>
                         )}
                       </td>
