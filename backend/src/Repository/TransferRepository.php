@@ -22,6 +22,7 @@ use function assert;
 use function bcsub;
 use function implode;
 use function is_int;
+use function is_numeric;
 use function sprintf;
 
 /** @extends ServiceEntityRepository<Transfer> */
@@ -550,5 +551,61 @@ class TransferRepository extends ServiceEntityRepository
         $result = $connection->executeQuery($sql, $params)->fetchAllAssociative();
 
         return $result;
+    }
+
+    /**
+     * Calculate totals (in/out/net) for transfers matching filters.
+     *
+     * @param array<string> $labelIds
+     * @param array<string> $accountIds
+     *
+     * @return array{totalIn: float, totalOut: float, net: float}
+     */
+    public function calculateTotalsWithFilters(
+        string|null $search = null,
+        DateTimeImmutable|null $dateFrom = null,
+        DateTimeImmutable|null $dateTo = null,
+        array $labelIds = [],
+        array $accountIds = [],
+        string|null $accountId = null,
+        float|null $amountMin = null,
+        float|null $amountMax = null,
+        string|null $amountOperator = 'none',
+        bool $noLabelsOnly = false,
+        bool $excludeInternal = true,
+    ): array {
+        $queryBuilder = $this->buildFilterQuery(
+            $search,
+            $dateFrom,
+            $dateTo,
+            $labelIds,
+            $accountIds,
+            $accountId,
+            $amountMin,
+            $amountMax,
+            $amountOperator,
+            $noLabelsOnly,
+            $excludeInternal,
+        );
+
+        // Calculate totals using SQL aggregate functions
+        $queryBuilder->select('
+            SUM(CASE WHEN t.amount > 0 THEN t.amount ELSE 0 END) as totalIn,
+            SUM(CASE WHEN t.amount < 0 THEN t.amount ELSE 0 END) as totalOut,
+            SUM(t.amount) as net
+        ');
+
+        /** @var array<string, mixed> $result */
+        $result = $queryBuilder->getQuery()->getSingleResult();
+
+        $totalIn  = $result['totalIn'] ?? 0;
+        $totalOut = $result['totalOut'] ?? 0;
+        $net      = $result['net'] ?? 0;
+
+        return [
+            'totalIn' => is_numeric($totalIn) ? (float) $totalIn : 0.0,
+            'totalOut' => is_numeric($totalOut) ? (float) $totalOut : 0.0,
+            'net' => is_numeric($net) ? (float) $net : 0.0,
+        ];
     }
 }

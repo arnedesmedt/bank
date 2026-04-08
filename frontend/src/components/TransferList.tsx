@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { TransferImport } from './TransferImport';
 import Amount from './Amount';
 import { fetchTransfers, bulkAction } from '../services/transfersService';
+import { fetchTransferTotals } from '../services/transfersTotalsService';
 import type { Transfer, BulkActionRequest } from '../services/transfersService';
 import type { TransferFilters, BulkAction, LabelOption } from './ActionBar';
 
@@ -49,6 +50,8 @@ export function TransferList({
     const [initialLoading, setInitialLoading] = useState(true);
     const [loadingMore, setLoadingMore] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [totals, setTotals] = useState({ totalIn: 0, totalOut: 0, net: 0 });
+    const [totalsLoading, setTotalsLoading] = useState(false);
 
     // ── Normal selection state ─────────────────────────────────────────────────
     const [internalSelectedIds, setInternalSelectedIds] = useState<string[]>([]);
@@ -195,12 +198,39 @@ export function TransferList({
         }
     }, [accessToken, filters, page, setSelectedIds]);
 
+    const fetchTotals = useCallback(async () => {
+        if (!accessToken || !filters) return;
+        
+        setTotalsLoading(true);
+        try {
+            const totalsData = await fetchTransferTotals({
+                search: filters.search,
+                dateFrom: filters.dateFrom,
+                dateTo: filters.dateTo,
+                labelIds: filters.labelIds,
+                accountIds: filters.accountIds,
+                amountMin: filters.amountMin,
+                amountMax: filters.amountMax,
+                amountOperator: filters.amountOperator,
+                excludeInternal: filters.excludeInternal,
+            }, accessToken);
+            
+            setTotals(totalsData);
+        } catch (err) {
+            console.error('Failed to fetch totals:', err);
+            // Keep previous totals on error
+        } finally {
+            setTotalsLoading(false);
+        }
+    }, [accessToken, filters?.search, filters?.dateFrom, filters?.dateTo, JSON.stringify(filters?.labelIds), JSON.stringify(filters?.accountIds), filters?.amountMin, filters?.amountMax, filters?.amountOperator, filters?.excludeInternal]);
+
     useEffect(() => {
         setPage(1);
         setHasMore(true);
         void fetchPage(1, true);
+        void fetchTotals();
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [externalRefreshKey, accessToken, filters?.search, filters?.dateFrom, filters?.dateTo, JSON.stringify(filters?.labelIds), JSON.stringify(filters?.accountIds)]);
+    }, [externalRefreshKey, accessToken, filters?.search, filters?.dateFrom, filters?.dateTo, JSON.stringify(filters?.labelIds), JSON.stringify(filters?.accountIds), fetchTotals]);
 
     useEffect(() => {
         if (page === 1) return;
@@ -226,7 +256,8 @@ export function TransferList({
         setPage(1);
         setHasMore(true);
         void fetchPage(1, true);
-    }, [fetchPage]);
+        void fetchTotals();
+    }, [fetchPage, fetchTotals]);
 
     // ── Normal selection helpers ───────────────────────────────────────────────
     const toggleSelect = useCallback(
@@ -258,12 +289,13 @@ export function TransferList({
                 await bulkAction(request, accessToken);
                 setSelectedIds([]);
                 void fetchPage(1, true);
+                void fetchTotals();
             } catch (err) {
                 setError(err instanceof Error ? err.message : 'Bulk action failed');
             }
             onBulkAction?.(action);
         },
-        [accessToken, selectedIds, fetchPage, setSelectedIds, onBulkAction],
+        [accessToken, selectedIds, fetchPage, fetchTotals, setSelectedIds, onBulkAction],
     );
 
     // ── Confirm refund linking ─────────────────────────────────────────────────
@@ -309,9 +341,8 @@ export function TransferList({
     }
 
     // ── Totals ─────────────────────────────────────────────────────────────────
-    const totalIn  = transfers.reduce((sum, t) => sum + (parseFloat(t.amount) > 0 ? parseFloat(t.amount) : 0), 0);
-    const totalOut = transfers.reduce((sum, t) => sum + (parseFloat(t.amount) < 0 ? parseFloat(t.amount) : 0), 0);
-    const net      = totalIn + totalOut;
+    // Totals - fetched from API to include all filtered transfers, not just loaded ones
+    const { totalIn, totalOut, net } = totals;
 
     const formatDate = (dateString: string) =>
         new Date(dateString).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });

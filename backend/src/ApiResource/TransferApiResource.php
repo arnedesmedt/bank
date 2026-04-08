@@ -14,6 +14,7 @@ use App\State\TransferImportProcessor;
 use App\State\TransferItemProvider;
 use App\State\TransferLabelProcessor;
 use App\State\TransferStateProvider;
+use App\State\TransferTotalsProvider;
 
 #[ApiResource(
     shortName: 'Transfer',
@@ -21,6 +22,11 @@ use App\State\TransferStateProvider;
         new GetCollection(
             uriTemplate: '/transfers',
             provider: TransferStateProvider::class,
+        ),
+        new Get(
+            uriTemplate: '/transfers/totals',
+            description: 'Get totals (in/out/net) for transfers matching filters',
+            provider: TransferTotalsProvider::class,
         ),
         new Get(
             uriTemplate: '/transfers/{id}',
