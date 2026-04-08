@@ -222,6 +222,7 @@ class TransferRepository extends ServiceEntityRepository
         float|null $amountMax = null,
         string|null $amountOperator = 'eq',
         bool $noLabelsOnly = false,
+        bool $excludeInternal = false,
         int $limit = 30,
         int $offset = 0,
     ): array {
@@ -236,6 +237,7 @@ class TransferRepository extends ServiceEntityRepository
             $amountMax,
             $amountOperator,
             $noLabelsOnly,
+            $excludeInternal,
         );
         $queryBuilder->orderBy('t.date', 'DESC')
             ->setMaxResults($limit)
@@ -318,6 +320,7 @@ class TransferRepository extends ServiceEntityRepository
         float|null $amountMax = null,
         string|null $amountOperator = 'eq',
         bool $noLabelsOnly = false,
+        bool $excludeInternal = false,
     ): QueryBuilder {
         $queryBuilder = $this->createQueryBuilder('t')
             ->andWhere('t.isReversed = false');
@@ -414,6 +417,10 @@ class TransferRepository extends ServiceEntityRepository
             }
         }
 
+        if ($excludeInternal) {
+            $queryBuilder->andWhere('t.isInternal = false');
+        }
+
         return $queryBuilder;
     }
 
@@ -443,6 +450,11 @@ class TransferRepository extends ServiceEntityRepository
 
         $where  = ['t.is_reversed = false'];
         $params = [];
+
+        // Add archived label filter when joining with label_transfer_link
+        if ($groupBy === 'label' || $groupBy === 'label_and_period' || $labelIds !== []) {
+            $where[] = 'ltl.is_archived = false';
+        }
 
         if ($dateFrom instanceof DateTimeImmutable) {
             $where[]            = 't.date >= :dateFrom';

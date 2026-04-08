@@ -14,6 +14,7 @@ use App\Service\LabelingService;
 use InvalidArgumentException;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
+use Psr\Log\LoggerInterface;
 
 class LabelArchivingTest extends TestCase
 {
@@ -28,6 +29,7 @@ class LabelArchivingTest extends TestCase
             $this->createMock(LabelRepository::class),
             $this->repository,
             $this->createMock(TransferRepository::class),
+            $this->createMock(LoggerInterface::class),
         );
     }
 

@@ -191,38 +191,77 @@ class EntityMapper
         return $labelApiResource;
     }
 
-    public function mapDtoToLabel(LabelApiResource $labelApiResource, Label $label): Label
+    /**
+     * Map DTO to Label entity and detect parent/child label changes.
+     * Returns array with label and information about changes.
+     *
+     * @return array{
+     *   label: Label,
+     *   parentChanged: bool,
+     *   oldParent: Label|null,
+     *   newParent: Label|null,
+     *   childChanges: array{added: array<Label>, removed: array<Label>}
+     * }
+     */
+    public function mapDtoToLabel(LabelApiResource $labelApiResource, Label $label): array
     {
+        $oldParent = $label->getParentLabel();
+
         $label->setName($labelApiResource->name);
         $label->setLinkedRegexes($labelApiResource->linkedRegexes);
         $label->setMaxValue($labelApiResource->maxValue);
         $label->setMaxPercentage($labelApiResource->maxPercentage);
 
         // Resolve parent label
+        $newParent = null;
         if ($labelApiResource->parentLabelId !== null) {
-            $parentLabel = $this->labelRepository->find(Uuid::fromRfc4122($labelApiResource->parentLabelId));
-            $label->setParentLabel($parentLabel);
+            $newParent = $this->labelRepository->find(Uuid::fromRfc4122($labelApiResource->parentLabelId));
+            $label->setParentLabel($newParent);
         } else {
             $label->setParentLabel(null);
+        }
+
+        // Detect if parent label changed
+        $parentChanged = false;
+        if ($oldParent !== $newParent) {
+            // Check if it's actually a different UUID (not just different object instances)
+            $oldParentId = $oldParent?->getId();
+            $newParentId = $newParent?->getId();
+
+            if ($oldParentId !== $newParentId) {
+                $parentChanged = true;
+            }
         }
 
         // Sync linked bank accounts
         $this->labelService->syncLinkedBankAccounts($label, $labelApiResource->linkedBankAccountIds);
 
-        // Sync child labels
-        $this->syncChildLabels($label, $labelApiResource->childLabelIds);
+        // Sync child labels and track changes
+        $childChanges = $this->syncChildLabels($label, $labelApiResource->childLabelIds);
 
-        return $label;
+        return [
+            'label' => $label,
+            'parentChanged' => $parentChanged,
+            'oldParent' => $oldParent,
+            'newParent' => $newParent,
+            'childChanges' => $childChanges,
+        ];
     }
 
     /**
-     * Sync child label relationships.
+     * Sync child label relationships and track changes.
      * Removes existing child relationships not in the provided list and adds new ones.
+     * Returns information about added and removed children.
      *
      * @param array<string> $childLabelIds
+     *
+     * @return array{added: array<Label>, removed: array<Label>}
      */
-    private function syncChildLabels(Label $label, array $childLabelIds): void
+    private function syncChildLabels(Label $label, array $childLabelIds): array
     {
+        $addedChildren   = [];
+        $removedChildren = [];
+
         // Get current child labels
         $currentChildLabels = $label->getChildLabels();
         $currentChildIds    = [];
@@ -248,6 +287,7 @@ class EntityMapper
             }
 
             $childLabel->setParentLabel(null);
+            $removedChildren[] = $childLabel;
         }
 
         // Add new child labels
@@ -268,7 +308,13 @@ class EntityMapper
             }
 
             $childLabel->setParentLabel($label);
+            $addedChildren[] = $childLabel;
         }
+
+        return [
+            'added' => $addedChildren,
+            'removed' => $removedChildren,
+        ];
     }
 
     /**

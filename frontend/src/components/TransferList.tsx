@@ -557,12 +557,12 @@ export function TransferList({
                                 {(childrenByParent.get(transfer.id)?.length ?? 0)} refund{(childrenByParent.get(transfer.id)?.length ?? 0) !== 1 ? 's' : ''} ▶
                             </button>
                         )}
-                        {(transfer.labelLinks ?? []).map((link) => (
+                        {(transfer.labelLinks ?? []).filter((link) => !link.isArchived).map((link) => (
                             <button
                                 key={link.id}
                                 onClick={(e) => { 
                                     e.stopPropagation(); 
-                                    handleCtrlClick(e, `/labels/${link.id}`);
+                                    handleCtrlClick(e, `/labels/${link.labelId || ''}`);
                                 }}
                                 title={link.isManual ? 'Manually assigned' : 'Auto-assigned'}
                                 className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium cursor-pointer hover:opacity-75 transition-opacity ${

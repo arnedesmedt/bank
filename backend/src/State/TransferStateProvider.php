@@ -46,15 +46,16 @@ class TransferStateProvider implements ProviderInterface
         $itemsPerPage = 30;
         $offset       = ($page - 1) * $itemsPerPage;
 
-        $search         = null;
-        $dateFrom       = null;
-        $dateTo         = null;
-        $labelIds       = [];
-        $accountIds     = [];
-        $accountId      = null;
-        $amountMin      = null;
-        $amountMax      = null;
-        $amountOperator = 'eq';
+        $search          = null;
+        $dateFrom        = null;
+        $dateTo          = null;
+        $labelIds        = [];
+        $accountIds      = [];
+        $accountId       = null;
+        $amountMin       = null;
+        $amountMax       = null;
+        $amountOperator  = 'eq';
+        $excludeInternal = false;
 
         if (isset($filters['search']) && is_string($filters['search']) && $filters['search'] !== '') {
             $search = $filters['search'];
@@ -118,6 +119,10 @@ class TransferStateProvider implements ProviderInterface
             $amountOperator = $filters['amountOperator'];
         }
 
+        if (isset($filters['excludeInternal']) && $filters['excludeInternal'] === 'true') {
+            $excludeInternal = true;
+        }
+
         $transfers = $this->transferRepository->findWithFilters(
             $search,
             $dateFrom,
@@ -129,6 +134,7 @@ class TransferStateProvider implements ProviderInterface
             $amountMax,
             $amountOperator,
             $noLabelsOnly,
+            $excludeInternal,
             $itemsPerPage,
             $offset,
         );

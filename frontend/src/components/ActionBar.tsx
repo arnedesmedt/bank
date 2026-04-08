@@ -13,6 +13,7 @@ export interface TransferFilters {
     amountMin: string;
     amountMax: string;
     amountOperator: 'eq' | 'lt' | 'gt' | 'lte' | 'gte';
+    excludeInternal: boolean;
 }
 
 export interface LabelOption {
@@ -300,6 +301,22 @@ export function ActionBar({
                             className="text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400 px-2 py-1.5 w-24"
                             aria-label="Amount value"
                         />
+                    </div>
+
+                    {/* Exclude internal transfers filter */}
+                    <div className="flex items-center gap-2">
+                        <input
+                            type="checkbox"
+                            id="excludeInternal"
+                            checked={filters.excludeInternal}
+                            onChange={(e) => {
+                                onFiltersChange!({ ...filters, excludeInternal: e.target.checked });
+                            }}
+                            className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-400"
+                        />
+                        <label htmlFor="excludeInternal" className="text-sm text-gray-700 cursor-pointer">
+                            Exclude internal transfers
+                        </label>
                     </div>
 
                     {/* Label filter dropdown */}

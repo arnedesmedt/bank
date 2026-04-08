@@ -77,6 +77,11 @@ class TransfersByLabelProvider implements ProviderInterface
             }
         }
 
+        $excludeInternal = false;
+        if (isset($filters['excludeInternal']) && $filters['excludeInternal'] === 'true') {
+            $excludeInternal = true;
+        }
+
         $transfers = $this->transferRepository->findWithFilters(
             $search,
             $dateFrom,
@@ -88,6 +93,7 @@ class TransfersByLabelProvider implements ProviderInterface
             null,
             'eq',  // amountOperator
             false, // noLabelsOnly is always false for label-specific transfers
+            $excludeInternal,
             10000,
             0,
         );

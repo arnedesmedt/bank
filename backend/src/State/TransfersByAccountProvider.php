@@ -89,6 +89,11 @@ class TransfersByAccountProvider implements ProviderInterface
             $labelIds = array_filter($labelIds, static fn (string $id): bool => $id !== 'no-labels');
         }
 
+        $excludeInternal = false;
+        if (isset($filters['excludeInternal']) && $filters['excludeInternal'] === 'true') {
+            $excludeInternal = true;
+        }
+
         $transfers = $this->transferRepository->findWithFilters(
             $search,
             $dateFrom,
@@ -100,6 +105,7 @@ class TransfersByAccountProvider implements ProviderInterface
             null,
             'eq',
             $noLabelsOnly,
+            $excludeInternal,
             10000,
             0,
         );

@@ -47,6 +47,9 @@ const TransferListPage: React.FC = () => {
         if (newFilters.accountIds.length > 0) {
             newFilters.accountIds.forEach(id => params.append('accountIds[]', id));
         }
+        if (newFilters.excludeInternal) {
+            params.set('excludeInternal', 'true');
+        }
         
         const queryString = params.toString();
         const newPath = queryString ? `?${queryString}` : '';
@@ -63,12 +66,14 @@ const TransferListPage: React.FC = () => {
         const search = searchParams.get('search');
         const labelIds = searchParams.getAll('labelIds[]');
         const accountIds = searchParams.getAll('accountIds[]');
+        const excludeInternal = searchParams.get('excludeInternal');
 
         if (dateFrom) { urlFilters.dateFrom = dateFrom; hasUrlFilters = true; }
         if (dateTo) { urlFilters.dateTo = dateTo; hasUrlFilters = true; }
         if (search) { urlFilters.search = search; hasUrlFilters = true; }
         if (labelIds.length > 0) { urlFilters.labelIds = labelIds; hasUrlFilters = true; }
         if (accountIds.length > 0) { urlFilters.accountIds = accountIds; hasUrlFilters = true; }
+        if (excludeInternal === 'true') { urlFilters.excludeInternal = true; hasUrlFilters = true; }
 
         // If URL parameters are present, replace all filters (don't merge with existing)
         if (hasUrlFilters) {
@@ -80,7 +85,8 @@ const TransferListPage: React.FC = () => {
                 accountIds: urlFilters.accountIds || [],
                 amountMin: filters.amountMin,  // Preserve existing amount filters
                 amountMax: filters.amountMax,  // Preserve existing amount filters
-                amountOperator: filters.amountOperator  // Preserve existing amount filters
+                amountOperator: filters.amountOperator,  // Preserve existing amount filters
+                excludeInternal: urlFilters.excludeInternal ?? false
             };
             
             setFilters(newFilters);

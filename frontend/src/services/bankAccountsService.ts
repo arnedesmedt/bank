@@ -42,7 +42,7 @@ export function fetchBankAccount(id: string, accessToken: string): Promise<BankA
 export function fetchBankAccountTransfers(
   id: string,
   accessToken: string,
-  filters?: { search?: string; dateFrom?: string; dateTo?: string; labelIds?: string[]; amountMin?: string; amountMax?: string; amountOperator?: string },
+  filters?: { search?: string; dateFrom?: string; dateTo?: string; labelIds?: string[]; amountMin?: string; amountMax?: string; amountOperator?: string; excludeInternal?: boolean },
 ): Promise<BankAccountTransfer[]> {
   const params = new URLSearchParams();
   if (filters?.search) params.set('search', filters.search);
@@ -52,6 +52,7 @@ export function fetchBankAccountTransfers(
   if (filters?.amountMin) params.set('amountMin', filters.amountMin);
   if (filters?.amountMax) params.set('amountMax', filters.amountMax);
   if (filters?.amountOperator && filters.amountOperator !== 'eq') params.set('amountOperator', filters.amountOperator);
+  if (filters?.excludeInternal) params.set('excludeInternal', 'true');
   const query = params.toString();
   return apiGet<BankAccountTransfer[]>(`/api/bank-accounts/${id}/transfers${query ? `?${query}` : ''}`, accessToken);
 }

@@ -28,7 +28,7 @@
 - **Port**: 8080 → 80
 - **Status**: Running
 - **Backend Proxy**: ✅ Configured to PHP-FPM on port 9000
-- **Test URL**: http://localhost:8080 (returns 404 - expected)
+- **Test URL**: http://0.0.0.0:8080 (returns 404 - expected)
 
 ### ✅ Frontend (React + Vite)
 - **Container**: `bank_frontend`
@@ -38,7 +38,7 @@
 - **Dev Server**: Vite 7.3.1
 - **Hot Reload**: Enabled
 - **Volume**: `./frontend:/app` (development mode)
-- **Test URL**: http://localhost:3000
+- **Test URL**: http://0.0.0.0:3000
 
 ## Quick Commands
 

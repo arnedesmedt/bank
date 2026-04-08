@@ -11,10 +11,12 @@ use App\Repository\LabelRepository;
 use App\Repository\LabelTransferLinkRepository;
 use App\Repository\TransferRepository;
 use InvalidArgumentException;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\Uid\Uuid;
 
 use function array_any;
 use function array_values;
+use function count;
 use function preg_match;
 
 class LabelingService
@@ -26,6 +28,7 @@ class LabelingService
         private readonly LabelRepository $labelRepository,
         private readonly LabelTransferLinkRepository $labelTransferLinkRepository,
         private readonly TransferRepository $transferRepository,
+        private readonly LoggerInterface $logger,
     ) {
     }
 
@@ -202,6 +205,47 @@ class LabelingService
         foreach ($affectedLabels as $affectedLabel) {
             $this->autoAssignLabelToAllTransfers($affectedLabel);
         }
+    }
+
+    /**
+     * Propagate a parent label to all existing transfers that have the child label.
+     * Called when a parent label is assigned to a child label.
+     */
+    public function propagateParentLabelToExistingTransfers(Label $childLabel, Label $parentLabel): void
+    {
+        // Get all label transfer links for the child label (much more efficient)
+        $childLinks = $this->labelTransferLinkRepository->findByLabel($childLabel);
+
+        $this->logger->info('Starting parent label propagation', [
+            'childLabel' => $childLabel->getName(),
+            'childLabelId' => $childLabel->getId()?->toRfc4122(),
+            'parentLabel' => $parentLabel->getName(),
+            'parentLabelId' => $parentLabel->getId()?->toRfc4122(),
+            'childLinksFound' => count($childLinks),
+        ]);
+
+        foreach ($childLinks as $childLink) {
+            $transfer = $childLink->getTransfer();
+
+            $this->logger->info('Processing transfer for parent propagation', [
+                'transferId' => $transfer->getId()?->toRfc4122(),
+                'isManual' => $childLink->isManual(),
+            ]);
+
+            // Add the parent label to this transfer
+            $this->createOrUpgradeLink($parentLabel, $transfer, $childLink->isManual());
+
+            // Also propagate the parent's parents (grandparents, etc.)
+            $this->propagateParentLinks($parentLabel, $transfer, $childLink->isManual());
+        }
+
+        $this->labelTransferLinkRepository->flush();
+
+        $this->logger->info('Completed parent label propagation', [
+            'childLabel' => $childLabel->getName(),
+            'parentLabel' => $parentLabel->getName(),
+            'transfersProcessed' => count($childLinks),
+        ]);
     }
 
     /**

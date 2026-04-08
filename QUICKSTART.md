@@ -80,8 +80,8 @@ make migrate
 
 ### 6. Access the Application
 
-- Frontend: http://localhost:3000
-- Backend API: http://localhost:8080
+- Frontend: http://0.0.0.0:3000
+- Backend API: http://0.0.0.0:8080
 - Database: `postgresql://bank_user:bank_password@localhost:5432/bank_app`
 
 ## Development Workflow

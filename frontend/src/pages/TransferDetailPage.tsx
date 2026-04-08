@@ -422,7 +422,13 @@ const TransferDetailPage: React.FC = () => {
                             >
                                 <button
                                     onClick={(e) => {
-                                        const labelId = link.labelId || link.id; // Use labelId if available, fallback to link.id
+                                        // Always use labelId for navigation - it should always be available
+                                        const labelId = link.labelId;
+                                        if (!labelId) {
+                                            console.error('Label ID not available for navigation');
+                                            return;
+                                        }
+                                        
                                         if (e.ctrlKey || e.metaKey) {
                                             e.preventDefault();
                                             window.open(`/labels/${labelId}`, '_blank');
@@ -438,8 +444,8 @@ const TransferDetailPage: React.FC = () => {
                                 </button>
                                 {link.isManual && (
                                     <button
-                                        onClick={() => void handleRemoveLabel(link.id)}
-                                        disabled={removingLabelId === link.id}
+                                        onClick={() => void handleRemoveLabel(link.labelId || '')}
+                                        disabled={removingLabelId === (link.labelId || '')}
                                         aria-label={`Remove label ${link.name}`}
                                         className="ml-1 opacity-60 hover:opacity-100 font-bold text-lg leading-none"
                                     >

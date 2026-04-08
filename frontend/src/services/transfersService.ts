@@ -43,6 +43,7 @@ export interface TransferFilters {
     amountMin?: string;
     amountMax?: string;
     amountOperator?: 'eq' | 'lt' | 'gt' | 'lte' | 'gte';
+    excludeInternal?: boolean;
 }
 
 export interface GroupByResult {
@@ -86,6 +87,7 @@ export async function fetchTransfers(
     if (filters.amountMin) params.set('amountMin', filters.amountMin);
     if (filters.amountMax) params.set('amountMax', filters.amountMax);
     if (filters.amountOperator && filters.amountOperator !== 'eq') params.set('amountOperator', filters.amountOperator);
+    if (filters.excludeInternal) params.set('excludeInternal', 'true');
 
     const query = params.toString();
     return apiGet<Transfer[]>(`/api/transfers${query ? `?${query}` : ''}`, accessToken);

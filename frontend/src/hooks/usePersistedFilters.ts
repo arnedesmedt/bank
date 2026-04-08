@@ -9,7 +9,8 @@ const DEFAULT_FILTERS: TransferFilters = {
     accountIds: [],
     amountMin: '',
     amountMax: '',
-    amountOperator: 'eq'
+    amountOperator: 'eq',
+    excludeInternal: false
 };
 
 /**
@@ -36,6 +37,7 @@ export function usePersistedFilters(storageKey: string = 'bank-transfer-filters'
                     typeof parsedFilters.amountMin === 'string' &&
                     typeof parsedFilters.amountMax === 'string' &&
                     typeof parsedFilters.amountOperator === 'string' &&
+                    typeof parsedFilters.excludeInternal === 'boolean' &&
                     ['eq', 'lt', 'gt', 'lte', 'gte'].includes(parsedFilters.amountOperator)) {
                     return parsedFilters;
                 }
@@ -67,7 +69,8 @@ export function usePersistedFilters(storageKey: string = 'bank-transfer-filters'
             accountIds: newFilters.accountIds || [],
             amountMin: newFilters.amountMin || '',
             amountMax: newFilters.amountMax || '',
-            amountOperator: (newFilters.amountOperator || 'eq') as TransferFilters['amountOperator']
+            amountOperator: (newFilters.amountOperator || 'eq') as TransferFilters['amountOperator'],
+            excludeInternal: typeof newFilters.excludeInternal === 'boolean' ? newFilters.excludeInternal : false
         };
         
         // Check if filters actually changed
@@ -81,7 +84,8 @@ export function usePersistedFilters(storageKey: string = 'bank-transfer-filters'
             safeNewFilters.accountIds.some((id, i) => id !== prevFilters.accountIds[i]) ||
             safeNewFilters.amountMin !== prevFilters.amountMin ||
             safeNewFilters.amountMax !== prevFilters.amountMax ||
-            safeNewFilters.amountOperator !== prevFilters.amountOperator;
+            safeNewFilters.amountOperator !== prevFilters.amountOperator ||
+            safeNewFilters.excludeInternal !== prevFilters.excludeInternal;
 
         if (!filtersChanged) {
             return; // No change, don't update

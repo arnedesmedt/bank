@@ -79,8 +79,8 @@ docker compose exec php bin/console league:oauth2-server:generate-keypair
 
 ### Access
 
-- Frontend: http://localhost:3000
-- Backend API: http://localhost:8080
+- Frontend: http://0.0.0.0:3000
+- Backend API: http://0.0.0.0:8080
 - Database: localhost:5432
 
 ### Development

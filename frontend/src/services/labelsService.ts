@@ -84,7 +84,7 @@ export interface LabelTransfer {
 export function fetchLabelTransfers(
     labelId: string,
     accessToken: string,
-    filters?: { search?: string; dateFrom?: string; dateTo?: string; amountMin?: string; amountMax?: string; amountOperator?: string },
+    filters?: { search?: string; dateFrom?: string; dateTo?: string; amountMin?: string; amountMax?: string; amountOperator?: string; excludeInternal?: boolean },
 ): Promise<LabelTransfer[]> {
     const params = new URLSearchParams();
     if (filters?.search) params.set('search', filters.search);
@@ -93,6 +93,7 @@ export function fetchLabelTransfers(
     if (filters?.amountMin) params.set('amountMin', filters.amountMin);
     if (filters?.amountMax) params.set('amountMax', filters.amountMax);
     if (filters?.amountOperator && filters.amountOperator !== 'eq') params.set('amountOperator', filters.amountOperator);
+    if (filters?.excludeInternal) params.set('excludeInternal', 'true');
     const query = params.toString();
     return apiGet<LabelTransfer[]>(`/api/labels/${labelId}/transfers${query ? `?${query}` : ''}`, accessToken);
 }

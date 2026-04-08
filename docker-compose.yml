@@ -139,7 +139,7 @@ services:
         networks:
             - bank_network
         environment:
-            VITE_API_URL: "http://localhost:${BACKEND_PORT:-8080}"
+            VITE_API_URL: "http://0.0.0.0:${BACKEND_PORT:-8080}"
         command: npm run dev -- --host 0.0.0.0
 
 networks:
