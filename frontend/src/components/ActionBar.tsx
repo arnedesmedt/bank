@@ -43,6 +43,8 @@ interface ActionBarProps {
     onFiltersChange?: (filters: TransferFilters) => void;
     availableLabels?: LabelOption[];
     availableAccounts?: AccountOption[];
+    /** Whether to show the amount filter (default: true) */
+    showAmountFilter?: boolean;
 
     // ── Bulk action props ────────────────────────────────────────────────────
     /** Number of currently selected transfers */
@@ -66,6 +68,7 @@ const DEBOUNCE_MS = 300;
  * The bar itself is hidden when it has nothing to render (no children, no filters).
  */
 export function ActionBar({
+    showAmountFilter = true,
     children,
     className = '',
     filters,
@@ -273,6 +276,7 @@ export function ActionBar({
                         />
                     </div>
 
+                    {showAmountFilter && (
                     {/* Amount filter */}
                     <div className="flex items-center gap-2">
                         <select
@@ -306,6 +310,7 @@ export function ActionBar({
                             aria-label="Amount value"
                         />
                     </div>
+                    )}
 
                     
                     {/* Label filter dropdown */}

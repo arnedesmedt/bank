@@ -282,6 +282,7 @@ const GroupByPage: React.FC = () => {
                 filters={filters}
                 onFiltersChange={setFilters}
                 availableLabels={labelOptions}
+                showAmountFilter={false}
             >
                 {/* Group by / period controls */}
                 <div className="flex items-center gap-2 ml-2">
