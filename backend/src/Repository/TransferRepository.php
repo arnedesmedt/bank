@@ -220,7 +220,7 @@ class TransferRepository extends ServiceEntityRepository
         string|null $accountId = null,
         float|null $amountMin = null,
         float|null $amountMax = null,
-        string|null $amountOperator = 'eq',
+        string|null $amountOperator = 'none',
         bool $noLabelsOnly = false,
         bool $excludeInternal = true,
         int $limit = 30,
@@ -318,7 +318,7 @@ class TransferRepository extends ServiceEntityRepository
         string|null $accountId = null,
         float|null $amountMin = null,
         float|null $amountMax = null,
-        string|null $amountOperator = 'eq',
+        string|null $amountOperator = 'none',
         bool $noLabelsOnly = false,
         bool $excludeInternal = true,
     ): QueryBuilder {
@@ -375,7 +375,7 @@ class TransferRepository extends ServiceEntityRepository
         }
 
         // Amount filtering
-        if ($amountMin !== null || $amountMax !== null) {
+        if (($amountMin !== null || $amountMax !== null) && $amountOperator !== 'none') {
             $operator = $amountOperator ?? 'eq'; // Default to 'eq' if null
 
             if ($operator === 'eq') {

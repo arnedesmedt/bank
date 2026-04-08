@@ -9,7 +9,7 @@ const DEFAULT_FILTERS: TransferFilters = {
     accountIds: [],
     amountMin: '',
     amountMax: '',
-    amountOperator: 'eq',
+    amountOperator: 'none',
     excludeInternal: true
 };
 
@@ -38,7 +38,7 @@ export function usePersistedFilters(storageKey: string = 'bank-transfer-filters'
                     typeof parsedFilters.amountMax === 'string' &&
                     typeof parsedFilters.amountOperator === 'string' &&
                     typeof parsedFilters.excludeInternal === 'boolean' &&
-                    ['eq', 'lt', 'gt', 'lte', 'gte'].includes(parsedFilters.amountOperator)) {
+                    ['none', 'eq', 'lt', 'gt', 'lte', 'gte'].includes(parsedFilters.amountOperator)) {
                     return parsedFilters;
                 }
             }
@@ -69,7 +69,7 @@ export function usePersistedFilters(storageKey: string = 'bank-transfer-filters'
             accountIds: newFilters.accountIds || [],
             amountMin: newFilters.amountMin || '',
             amountMax: newFilters.amountMax || '',
-            amountOperator: (newFilters.amountOperator || 'eq') as TransferFilters['amountOperator'],
+            amountOperator: (newFilters.amountOperator || 'none') as TransferFilters['amountOperator'],
             excludeInternal: typeof newFilters.excludeInternal === 'boolean' ? newFilters.excludeInternal : true
         };
         

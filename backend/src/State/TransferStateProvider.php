@@ -54,7 +54,7 @@ class TransferStateProvider implements ProviderInterface
         $accountId       = null;
         $amountMin       = null;
         $amountMax       = null;
-        $amountOperator  = 'eq';
+        $amountOperator  = 'none';
         $excludeInternal = true;
 
         if (isset($filters['search']) && is_string($filters['search']) && $filters['search'] !== '') {

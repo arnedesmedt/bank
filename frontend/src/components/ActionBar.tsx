@@ -12,7 +12,7 @@ export interface TransferFilters {
     accountIds: string[];
     amountMin: string;
     amountMax: string;
-    amountOperator: 'eq' | 'lt' | 'gt' | 'lte' | 'gte';
+    amountOperator: 'none' | 'eq' | 'lt' | 'gt' | 'lte' | 'gte';
     excludeInternal: boolean;
 }
 
@@ -284,6 +284,7 @@ export function ActionBar({
                             className="text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400 px-2 py-1.5"
                             aria-label="Amount operator"
                         >
+                            <option value="none">None</option>
                             <option value="eq">=</option>
                             <option value="lt">&lt;</option>
                             <option value="gt">&gt;</option>
@@ -298,7 +299,10 @@ export function ActionBar({
                             onChange={(e) => {
                                 onFiltersChange!({ ...filters, amountMin: e.target.value });
                             }}
-                            className="text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400 px-2 py-1.5 w-24"
+                            disabled={filters.amountOperator === 'none'}
+                            className={`text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400 px-2 py-1.5 w-24 ${
+                                filters.amountOperator === 'none' ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : ''
+                            }`}
                             aria-label="Amount value"
                         />
                     </div>
@@ -568,7 +572,7 @@ export function ActionBar({
                             type="button"
                             onClick={() => {
                                 setLocalSearch('');
-                                onFiltersChange!({ search: '', dateFrom: '', dateTo: '', labelIds: [], accountIds: [], amountMin: '', amountMax: '', amountOperator: 'eq' as const, excludeInternal: true });
+                                onFiltersChange!({ search: '', dateFrom: '', dateTo: '', labelIds: [], accountIds: [], amountMin: '', amountMax: '', amountOperator: 'none' as const, excludeInternal: true });
                             }}
                             className="flex items-center gap-1 px-3 py-1.5 text-sm text-gray-600 bg-gray-100 border border-gray-300 rounded-md hover:bg-red-50 hover:text-red-600 hover:border-red-300 focus:outline-none focus:ring-2 focus:ring-red-300 transition-colors"
                             aria-label="Clear all filters"
