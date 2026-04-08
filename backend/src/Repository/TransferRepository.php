@@ -222,7 +222,7 @@ class TransferRepository extends ServiceEntityRepository
         float|null $amountMax = null,
         string|null $amountOperator = 'eq',
         bool $noLabelsOnly = false,
-        bool $excludeInternal = false,
+        bool $excludeInternal = true,
         int $limit = 30,
         int $offset = 0,
     ): array {
@@ -320,7 +320,7 @@ class TransferRepository extends ServiceEntityRepository
         float|null $amountMax = null,
         string|null $amountOperator = 'eq',
         bool $noLabelsOnly = false,
-        bool $excludeInternal = false,
+        bool $excludeInternal = true,
     ): QueryBuilder {
         $queryBuilder = $this->createQueryBuilder('t')
             ->andWhere('t.isReversed = false');

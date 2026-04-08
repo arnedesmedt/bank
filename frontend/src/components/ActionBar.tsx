@@ -303,22 +303,7 @@ export function ActionBar({
                         />
                     </div>
 
-                    {/* Exclude internal transfers filter */}
-                    <div className="flex items-center gap-2">
-                        <input
-                            type="checkbox"
-                            id="excludeInternal"
-                            checked={filters.excludeInternal}
-                            onChange={(e) => {
-                                onFiltersChange!({ ...filters, excludeInternal: e.target.checked });
-                            }}
-                            className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-400"
-                        />
-                        <label htmlFor="excludeInternal" className="text-sm text-gray-700 cursor-pointer">
-                            Exclude internal transfers
-                        </label>
-                    </div>
-
+                    
                     {/* Label filter dropdown */}
                     {availableLabels.length > 0 && (
                         <div className="relative" ref={labelMenuRef}>
@@ -583,7 +568,7 @@ export function ActionBar({
                             type="button"
                             onClick={() => {
                                 setLocalSearch('');
-                                onFiltersChange!({ search: '', dateFrom: '', dateTo: '', labelIds: [], accountIds: [], amountMin: '', amountMax: '', amountOperator: 'eq' as const });
+                                onFiltersChange!({ search: '', dateFrom: '', dateTo: '', labelIds: [], accountIds: [], amountMin: '', amountMax: '', amountOperator: 'eq' as const, excludeInternal: true });
                             }}
                             className="flex items-center gap-1 px-3 py-1.5 text-sm text-gray-600 bg-gray-100 border border-gray-300 rounded-md hover:bg-red-50 hover:text-red-600 hover:border-red-300 focus:outline-none focus:ring-2 focus:ring-red-300 transition-colors"
                             aria-label="Clear all filters"

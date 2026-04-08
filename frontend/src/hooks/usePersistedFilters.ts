@@ -10,7 +10,7 @@ const DEFAULT_FILTERS: TransferFilters = {
     amountMin: '',
     amountMax: '',
     amountOperator: 'eq',
-    excludeInternal: false
+    excludeInternal: true
 };
 
 /**
@@ -70,7 +70,7 @@ export function usePersistedFilters(storageKey: string = 'bank-transfer-filters'
             amountMin: newFilters.amountMin || '',
             amountMax: newFilters.amountMax || '',
             amountOperator: (newFilters.amountOperator || 'eq') as TransferFilters['amountOperator'],
-            excludeInternal: typeof newFilters.excludeInternal === 'boolean' ? newFilters.excludeInternal : false
+            excludeInternal: typeof newFilters.excludeInternal === 'boolean' ? newFilters.excludeInternal : true
         };
         
         // Check if filters actually changed
