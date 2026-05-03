@@ -51,7 +51,6 @@ export function TransferList({
     const [loadingMore, setLoadingMore] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [totals, setTotals] = useState({ totalIn: 0, totalOut: 0, net: 0 });
-    const [totalsLoading, setTotalsLoading] = useState(false);
 
     // ── Normal selection state ─────────────────────────────────────────────────
     const [internalSelectedIds, setInternalSelectedIds] = useState<string[]>([]);
@@ -74,7 +73,7 @@ export function TransferList({
         ? (transfers.find((t) => t.id === linkRefundParentId) ?? null)
         : null;
 
-    const alreadyChildrenOfParent = new Set(linkRefundParent?.childRefundIds ?? []);
+    const alreadyChildrenOfParent = new Set((linkRefundParent?.childRefunds ?? []).map((c) => c.id));
 
     const parentAmount = parseFloat(linkRefundParent?.amount ?? '0');
     const linkRefundSum = linkRefundSelected.reduce((sum, id) => {
@@ -103,7 +102,7 @@ export function TransferList({
             let changed = false;
             const next = new Set(prev);
             for (const t of transfers) {
-                if ((t.childRefundIds?.length ?? 0) > 0 && !next.has(t.id)) {
+                if ((t.childRefunds?.length ?? 0) > 0 && !next.has(t.id)) {
                     next.add(t.id);
                     changed = true;
                 }
@@ -137,7 +136,7 @@ export function TransferList({
                         accountIds: filters?.accountIds,
                         amountMin: filters?.amountMin,
                         amountMax: filters?.amountMax,
-                        amountOperator: filters?.amountOperator,
+                        amountOperator: filters?.amountOperator !== 'none' ? filters?.amountOperator : undefined,
                     },
                     accessToken,
                 );
@@ -180,7 +179,7 @@ export function TransferList({
                         accountIds: filters?.accountIds,
                         amountMin: filters?.amountMin,
                         amountMax: filters?.amountMax,
-                        amountOperator: filters?.amountOperator,
+                        amountOperator: filters?.amountOperator !== 'none' ? filters?.amountOperator : undefined,
                     },
                     accessToken,
                 );
@@ -201,7 +200,6 @@ export function TransferList({
     const fetchTotals = useCallback(async () => {
         if (!accessToken || !filters) return;
         
-        setTotalsLoading(true);
         try {
             const totalsData = await fetchTransferTotals({
                 search: filters.search,
@@ -211,7 +209,7 @@ export function TransferList({
                 accountIds: filters.accountIds,
                 amountMin: filters.amountMin,
                 amountMax: filters.amountMax,
-                amountOperator: filters.amountOperator,
+                amountOperator: filters.amountOperator !== 'none' ? filters.amountOperator : undefined,
                 excludeInternal: filters.excludeInternal,
             }, accessToken);
             
@@ -219,8 +217,6 @@ export function TransferList({
         } catch (err) {
             console.error('Failed to fetch totals:', err);
             // Keep previous totals on error
-        } finally {
-            setTotalsLoading(false);
         }
     }, [accessToken, filters?.search, filters?.dateFrom, filters?.dateTo, JSON.stringify(filters?.labelIds), JSON.stringify(filters?.accountIds), filters?.amountMin, filters?.amountMax, filters?.amountOperator, filters?.excludeInternal]);
 
@@ -328,17 +324,10 @@ export function TransferList({
         });
     };
 
-    const childrenByParent = new Map<string, Transfer[]>();
-    const rootTransfers: Transfer[] = [];
-    for (const t of transfers) {
-        if (t.parentTransferId) {
-            const arr = childrenByParent.get(t.parentTransferId) ?? [];
-            arr.push(t);
-            childrenByParent.set(t.parentTransferId, arr);
-        } else {
-            rootTransfers.push(t);
-        }
-    }
+    // All fetched transfers are root/parent transfers.
+    // Children are embedded inside each parent as `transfer.childRefunds`.
+    // (The backend excludes child transfers from the main query.)
+    const rootTransfers = transfers;
 
     // ── Totals ─────────────────────────────────────────────────────────────────
     // Totals - fetched from API to include all filtered transfers, not just loaded ones
@@ -385,7 +374,7 @@ export function TransferList({
         const isSelectedAsRefund = linkRefundSelected.includes(transfer.id);
         const isLinkedElsewhere  = !isThisParent && !isAlreadyChild && !!transfer.parentTransferId;
 
-        const hasRefundChildren = childrenByParent.has(transfer.id);
+        const hasRefundChildren = (transfer.childRefunds?.length ?? 0) > 0;
         const isCollapsedParent = hasRefundChildren && collapsedParents.has(transfer.id);
 
         // Row visual class
@@ -452,7 +441,7 @@ export function TransferList({
 
                 {/* Collapse toggle / child indicator */}
                 <td className="px-1 py-4 w-6">
-                    {!isLinking && childrenByParent.has(transfer.id) && (
+                    {!isLinking && (transfer.childRefunds?.length ?? 0) > 0 && (
                         <button
                             type="button"
                             onClick={(e) => { e.stopPropagation(); toggleCollapse(transfer.id); }}
@@ -585,7 +574,7 @@ export function TransferList({
                                 <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
                                     <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
                                 </svg>
-                                {(childrenByParent.get(transfer.id)?.length ?? 0)} refund{(childrenByParent.get(transfer.id)?.length ?? 0) !== 1 ? 's' : ''} ▶
+                                {(transfer.childRefunds?.length ?? 0)} refund{(transfer.childRefunds?.length ?? 0) !== 1 ? 's' : ''} ▶
                             </button>
                         )}
                         {(transfer.labelLinks ?? []).filter((link) => !link.isArchived).map((link) => (
@@ -619,7 +608,7 @@ export function TransferList({
         const rows: React.ReactNode[] = [];
         for (const parent of rootTransfers) {
             rows.push(renderRow(parent, false));
-            const children = childrenByParent.get(parent.id) ?? [];
+            const children = parent.childRefunds ?? [];
             if (children.length > 0 && !collapsedParents.has(parent.id)) {
                 for (const child of children) {
                     rows.push(renderRow(child, true));
@@ -810,6 +799,36 @@ export function TransferList({
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
                             </svg>
                             Remove Refund Link
+                        </button>
+                    )}
+
+                    {/* Mark as internal */}
+                    {selectedIds.some((id) => !transfers.find((t) => t.id === id)?.isInternal) && (
+                        <button
+                            type="button"
+                            onClick={() => void handleBulkAction({ action: 'mark_internal' })}
+                            className="text-xs bg-white/20 hover:bg-white/30 rounded px-3 py-1 flex items-center gap-1"
+                            aria-label="Mark as internal"
+                        >
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                            </svg>
+                            Mark Internal
+                        </button>
+                    )}
+
+                    {/* Unmark as internal */}
+                    {selectedIds.some((id) => transfers.find((t) => t.id === id)?.isInternal) && (
+                        <button
+                            type="button"
+                            onClick={() => void handleBulkAction({ action: 'unmark_internal' })}
+                            className="text-xs bg-white/20 hover:bg-white/30 rounded px-3 py-1 flex items-center gap-1"
+                            aria-label="Unmark as internal"
+                        >
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            Unmark Internal
                         </button>
                     )}
 

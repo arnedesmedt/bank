@@ -28,7 +28,7 @@ class EntityMapper
     ) {
     }
 
-    public function mapTransferToDto(Transfer $transfer): TransferApiResource
+    public function mapTransferToDto(Transfer $transfer, int $depth = 0): TransferApiResource
     {
         $transferApiResource = new TransferApiResource();
         $uuid                = $transfer->getId();
@@ -96,13 +96,16 @@ class EntityMapper
 
         $transferApiResource->amountBeforeRefund = $transfer->getAmountBeforeRefund();
 
-        foreach ($transfer->getChildRefunds() as $childRefund) {
-            $childUuid = $childRefund->getId();
-            if (! ($childUuid instanceof Uuid)) {
-                continue;
-            }
+        // Embed child refund transfers (one level deep only)
+        if ($depth === 0) {
+            foreach ($transfer->getChildRefunds() as $childRefund) {
+                $childUuid = $childRefund->getId();
+                if (! ($childUuid instanceof Uuid)) {
+                    continue;
+                }
 
-            $transferApiResource->childRefundIds[] = $childUuid->toRfc4122();
+                $transferApiResource->childRefunds[] = $this->mapTransferToDto($childRefund, 1);
+            }
         }
 
         return $transferApiResource;
@@ -148,7 +151,59 @@ class EntityMapper
             $bankAccount->setIsInternal($bankAccountApiResource->isInternal);
         }
 
+        // Sync linked labels (from bank account edit side)
+        $this->syncLinkedLabels($bankAccount, $bankAccountApiResource->linkedLabelIds);
+
         return $bankAccount;
+    }
+
+    /**
+     * Sync the labels linked to a bank account from a list of label UUIDs.
+     * Mirrors LabelService::syncLinkedBankAccounts but from the bank account side.
+     *
+     * @param array<string> $labelIds
+     */
+    private function syncLinkedLabels(BankAccount $bankAccount, array $labelIds): void
+    {
+        // Remove labels no longer in the list
+        foreach ($bankAccount->getLinkedLabels() as $linkedLabel) {
+            $existingId = $linkedLabel->getId();
+            if ($existingId === null) {
+                continue;
+            }
+
+            if (in_array($existingId->toRfc4122(), $labelIds, true)) {
+                continue;
+            }
+
+            $bankAccount->removeLinkedLabel($linkedLabel);
+        }
+
+        // Collect current IDs after removals for duplicate check
+        $currentIds = [];
+        foreach ($bankAccount->getLinkedLabels() as $linkedLabel) {
+            $existingId = $linkedLabel->getId();
+            if ($existingId === null) {
+                continue;
+            }
+
+            $currentIds[] = $existingId->toRfc4122();
+        }
+
+        // Add new labels
+        foreach ($labelIds as $labelId) {
+            if (in_array($labelId, $currentIds, true)) {
+                continue;
+            }
+
+            $label = $this->labelRepository->find(Uuid::fromRfc4122($labelId));
+            if (! ($label instanceof Label)) {
+                continue;
+            }
+
+            $bankAccount->addLinkedLabel($label);
+            $currentIds[] = $labelId;
+        }
     }
 
     public function mapLabelToDto(Label $label): LabelApiResource

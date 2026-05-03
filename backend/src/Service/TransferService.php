@@ -359,6 +359,36 @@ class TransferService
     }
 
     /**
+     * Mark or unmark multiple transfers as internal.
+     *
+     * @param array<string> $transferIds
+     *
+     * @return array<Transfer>
+     */
+    public function bulkMarkInternal(array $transferIds, bool $isInternal): array
+    {
+        $updated = [];
+        foreach ($transferIds as $transferId) {
+            $transfer = $this->transferRepository->find(Uuid::fromRfc4122($transferId));
+            if (! $transfer instanceof Transfer) {
+                continue;
+            }
+
+            $transfer->setIsInternal($isInternal);
+            $updated[] = $transfer;
+
+            $this->logger->info('Transfer internal flag updated', [
+                'transferId' => $transferId,
+                'isInternal' => $isInternal,
+            ]);
+        }
+
+        $this->entityManager->flush();
+
+        return $updated;
+    }
+
+    /**
      * Remove refund links from child transfers, restoring their parent's amount.
      * Transfers that are not a refund child are silently skipped.
      * If all children of a parent are removed, the parent amount is fully restored

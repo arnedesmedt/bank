@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { MultiSelect } from '../components/MultiSelect';
 import {
     fetchLabel,
     fetchLabelTransfers,
@@ -16,7 +17,7 @@ import Amount from '../components/Amount';
 import { ActionBar } from '../components/ActionBar';
 import type { TransferFilters } from '../components/ActionBar';
 
-const EMPTY_FILTERS: TransferFilters = { search: '', dateFrom: '', dateTo: '', labelIds: [], accountIds: [], amountMin: '', amountMax: '', amountOperator: 'eq' };
+const EMPTY_FILTERS: TransferFilters = { search: '', dateFrom: '', dateTo: '', labelIds: [], accountIds: [], amountMin: '', amountMax: '', amountOperator: 'eq', excludeInternal: false };
 
 /**
  * T018/T021 [US2]: Label detail page.
@@ -384,18 +385,13 @@ const LabelDetailPage: React.FC = () => {
                                 <label className="block text-sm font-medium text-gray-700 mb-1">
                                     Child Labels (optional)
                                 </label>
-                                <div className="space-y-1 max-h-40 overflow-y-auto border border-gray-200 rounded p-2 bg-white">
-                                    {allLabels.filter((l) => l.id !== id && l.id !== editParentLabelId).map((l) => (
-                                        <label key={l.id} className="flex items-center gap-2 text-sm cursor-pointer">
-                                            <input
-                                                type="checkbox"
-                                                checked={editChildLabelIds.includes(l.id)}
-                                                onChange={() => toggleChildLabel(l.id)}
-                                            />
-                                            <span>{l.name}</span>
-                                        </label>
-                                    ))}
-                                </div>
+                                <MultiSelect
+                                    placeholder="Select child labels…"
+                                    options={allLabels.filter((l) => l.id !== id && l.id !== editParentLabelId)}
+                                    selectedIds={editChildLabelIds}
+                                    onChange={setEditChildLabelIds}
+                                    searchPlaceholder="Search labels…"
+                                />
                             </div>
                         )}
 
@@ -404,21 +400,16 @@ const LabelDetailPage: React.FC = () => {
                                 <label className="block text-sm font-medium text-gray-700 mb-1">
                                     Linked Bank Accounts
                                 </label>
-                                <div className="space-y-1 max-h-40 overflow-y-auto border border-gray-200 rounded p-2 bg-white">
-                                    {bankAccounts.map((ba) => (
-                                        <label key={ba.id} className="flex items-center gap-2 text-sm cursor-pointer">
-                                            <input
-                                                type="checkbox"
-                                                checked={editLinkedBankAccountIds.includes(ba.id)}
-                                                onChange={() => toggleBankAccount(ba.id)}
-                                            />
-                                            <span>
-                                                {ba.accountName}{' '}
-                                                <span className="text-gray-500">({ba.accountNumber})</span>
-                                            </span>
-                                        </label>
-                                    ))}
-                                </div>
+                                <MultiSelect
+                                    placeholder="Select bank accounts…"
+                                    options={bankAccounts.map((ba) => ({
+                                        id: ba.id,
+                                        name: `${ba.accountName} (${ba.accountNumber})`,
+                                    }))}
+                                    selectedIds={editLinkedBankAccountIds}
+                                    onChange={setEditLinkedBankAccountIds}
+                                    searchPlaceholder="Search accounts…"
+                                />
                             </div>
                         )}
 

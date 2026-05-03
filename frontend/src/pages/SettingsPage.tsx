@@ -1,12 +1,12 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotifications } from '../components/NotificationProvider';
-import { deleteAllTransfers } from '../services/transfersService';
+import { deleteAllTransfers, fetchStats, type AppStats } from '../services/transfersService';
 
 /**
  * Settings page — exposes administrative / destructive actions.
  * Currently provides the ability to wipe all transfer records after
- * a two-step confirmation.
+ * a two-step confirmation, plus an aggregate stats dashboard.
  */
 const SettingsPage: React.FC = () => {
     const { accessToken } = useAuth();
@@ -15,6 +15,20 @@ const SettingsPage: React.FC = () => {
     // Confirmation dialog state
     const [showConfirm, setShowConfirm] = useState(false);
     const [loading, setLoading] = useState(false);
+
+    // Stats state
+    const [stats, setStats] = useState<AppStats | null>(null);
+    const [statsLoading, setStatsLoading] = useState(true);
+    const [statsError, setStatsError] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (!accessToken) return;
+        setStatsLoading(true);
+        fetchStats(accessToken)
+            .then(setStats)
+            .catch((err: unknown) => setStatsError(err instanceof Error ? err.message : 'Failed to load stats'))
+            .finally(() => setStatsLoading(false));
+    }, [accessToken]);
 
     const handleDeleteAll = async () => {
         if (!accessToken) return;
@@ -38,7 +52,80 @@ const SettingsPage: React.FC = () => {
 
     return (
         <div className="max-w-2xl space-y-8">
-            {/* ── Danger Zone ────────────────────────────────────────────── */}
+            {/* ── Stats ──────────────────────────────────────────────────── */}
+            <section className="bg-white rounded-lg shadow-md overflow-hidden" aria-labelledby="stats-heading">
+                <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
+                    <h2 id="stats-heading" className="text-lg font-semibold text-gray-800">Overview</h2>
+                    <p className="text-sm text-gray-500 mt-0.5">Aggregate statistics about your data.</p>
+                </div>
+
+                {statsLoading && (
+                    <div className="px-6 py-8 flex items-center justify-center gap-2 text-gray-500 text-sm">
+                        <span className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+                        Loading stats…
+                    </div>
+                )}
+
+                {statsError && (
+                    <div className="px-6 py-4 text-sm text-red-700 bg-red-50 border-b border-red-100">{statsError}</div>
+                )}
+
+                {stats && !statsLoading && (
+                    <div className="p-6 space-y-6">
+                        {/* Transfer stats */}
+                        <div>
+                            <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">Transfers</h3>
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+                                <StatCard label="Total" value={stats.transfers.total} color="blue" />
+                                <StatCard label="Labeled" value={stats.transfers.withLabels} color="green" />
+                                <StatCard label="Unlabeled" value={stats.transfers.withoutLabels} color="orange" />
+                                <StatCard label="Internal" value={stats.transfers.internal} color="gray" />
+                            </div>
+
+                            {/* Labeled / unlabeled progress bar */}
+                            {stats.transfers.total > 0 && (
+                                <div>
+                                    <div className="flex justify-between text-xs text-gray-500 mb-1">
+                                        <span>
+                                            Labeled: {stats.transfers.withLabels} ({Math.round((stats.transfers.withLabels / stats.transfers.total) * 100)}%)
+                                        </span>
+                                        <span>
+                                            Unlabeled: {stats.transfers.withoutLabels} ({Math.round((stats.transfers.withoutLabels / stats.transfers.total) * 100)}%)
+                                        </span>
+                                    </div>
+                                    <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden">
+                                        <div
+                                            className="h-full bg-green-500 rounded-full transition-all"
+                                            style={{ width: `${(stats.transfers.withLabels / stats.transfers.total) * 100}%` }}
+                                        />
+                                    </div>
+                                </div>
+                            )}
+
+                            {stats.transfers.reversed > 0 && (
+                                <p className="mt-2 text-xs text-gray-400">
+                                    {stats.transfers.reversed} reversed internal transfer{stats.transfers.reversed !== 1 ? 's' : ''} hidden from view.
+                                </p>
+                            )}
+                        </div>
+
+                        {/* Labels + Bank accounts */}
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">Labels</h3>
+                                <StatCard label="Total labels" value={stats.labels.total} color="purple" />
+                            </div>
+                            <div>
+                                <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">Bank Accounts</h3>
+                                <div className="space-y-2">
+                                    <StatCard label="Total accounts" value={stats.bankAccounts.total} color="blue" />
+                                    <StatCard label="Internal" value={stats.bankAccounts.internal} color="gray" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </section>
             <section
                 className="bg-white rounded-lg shadow-md border border-red-200 overflow-hidden"
                 aria-labelledby="danger-zone-heading"
@@ -140,6 +227,29 @@ const SettingsPage: React.FC = () => {
     );
 };
 
+// ── StatCard ──────────────────────────────────────────────────────────────────
+
+const colorMap: Record<string, string> = {
+    blue:   'bg-blue-50 text-blue-700 border-blue-200',
+    green:  'bg-green-50 text-green-700 border-green-200',
+    orange: 'bg-orange-50 text-orange-700 border-orange-200',
+    gray:   'bg-gray-50 text-gray-700 border-gray-200',
+    purple: 'bg-purple-50 text-purple-700 border-purple-200',
+};
+
+interface StatCardProps {
+    label: string;
+    value: number;
+    color?: keyof typeof colorMap;
+}
+
+const StatCard: React.FC<StatCardProps> = ({ label, value, color = 'blue' }) => (
+    <div className={`rounded-lg border px-4 py-3 ${colorMap[color] ?? colorMap.blue}`}>
+        <p className="text-2xl font-bold">{value.toLocaleString()}</p>
+        <p className="text-xs mt-0.5 opacity-75">{label}</p>
+    </div>
+);
+
 // ── Icon ─────────────────────────────────────────────────────────────────────
 
 interface WarningIconProps {
@@ -165,6 +275,8 @@ const WarningIcon: React.FC<WarningIconProps> = ({ className = 'w-5 h-5' }) => (
 );
 
 export default SettingsPage;
+
+
 
 
 

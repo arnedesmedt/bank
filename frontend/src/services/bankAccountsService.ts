@@ -25,7 +25,10 @@ export interface BankAccountTransfer {
   reference: string;
   isInternal: boolean;
   labelIds: string[];
-  labelLinks: { id: string; name: string; isManual: boolean }[];
+  labelLinks: { id: string; name: string; isManual: boolean; isArchived: boolean }[];
+  parentTransferId: string | null;
+  /** Child refund transfers embedded in this parent. */
+  childRefunds: BankAccountTransfer[];
 }
 
 /** Fetch all bank accounts belonging to the authenticated user. */
@@ -87,6 +90,7 @@ export async function updateBankAccount(
   accessToken: string,
   accountNumber?: string | null,
   isInternal?: boolean,
+  linkedLabelIds?: string[],
 ): Promise<BankAccount> {
   const response = await fetch(`${API_URL}/api/bank-accounts/${id}`, {
     method: 'PUT',
@@ -95,7 +99,7 @@ export async function updateBankAccount(
       'Content-Type': 'application/json',
       Accept: 'application/json',
     },
-    body: JSON.stringify({ accountName, accountNumber: accountNumber ?? null, isInternal }),
+    body: JSON.stringify({ accountName, accountNumber: accountNumber ?? null, isInternal, linkedLabelIds: linkedLabelIds ?? [] }),
   });
 
   if (!response.ok) {

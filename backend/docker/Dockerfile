@@ -9,7 +9,8 @@ RUN apk add --no-cache \
     linux-headers \
     autoconf \
     g++ \
-    make
+    make \
+    poppler-utils
 
 # Install PHP extensions
 RUN docker-php-ext-install \
@@ -40,4 +41,3 @@ WORKDIR /var/www/html
 EXPOSE 9000
 
 CMD ["php-fpm"]
-

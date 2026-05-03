@@ -23,12 +23,15 @@ use function bcadd;
 use function bcsub;
 use function count;
 use function fclose;
+use function file_exists;
 use function fopen;
 use function hash;
 use function implode;
 use function is_numeric;
 use function ltrim;
+use function preg_replace;
 use function sprintf;
+use function trim;
 
 class CsvImportService
 {
@@ -68,9 +71,19 @@ class CsvImportService
     {
         $bankExtractor = $this->findExtractor($bankType);
 
+        if (! file_exists($filePath)) {
+            throw new RuntimeException(
+                sprintf(
+                    'Import file not found: "%s". '
+                    . 'The file may have been cleaned up after a previous failed attempt – please re-upload it.',
+                    $filePath,
+                ),
+            );
+        }
+
         $handle = fopen($filePath, 'r');
         if ($handle === false) {
-            throw new RuntimeException('Could not open CSV file');
+            throw new RuntimeException(sprintf('Could not open import file: "%s"', $filePath));
         }
 
         // Reset per-import in-memory caches
@@ -236,7 +249,6 @@ class CsvImportService
             (string) $fromAccountNo,
             (string) $toAccountNo,
             $bankTransferData->reference,
-            (string) $bankTransferData->transactionId,
         );
         $transfer->setFingerprint($fingerprint);
 
@@ -360,16 +372,32 @@ class CsvImportService
         string $fromAccount,
         string $toAccount,
         string $reference,
-        string $transactionId,
     ): string {
+        // For transfers with a known counter IBAN the account number alone makes
+        // the record unique together with date + amount; omitting the reference
+        // makes the fingerprint identical regardless of whether the data came from
+        // a Belfius CSV or a Belfius PDF (where the reference text differs).
+        //
+        // For card payments there is no counter IBAN, so we include a *normalised*
+        // version of the reference to distinguish e.g. two coffee purchases of the
+        // same price at the same merchant on the same day.  Normalisation:
+        //   1. Strip the Belfius-CSV-specific "REF. : … VAL. … BE… " trailer.
+        //   2. Collapse runs of whitespace (pdftotext layout artefacts) to one space.
+        //   3. Trim.
+        $normalizedReference = '';
+        if ($toAccount === '') {
+            $normalized          = preg_replace('/\s*REF\.\s*:.*$/i', '', $reference) ?? '';
+            $normalized          = preg_replace('/\s+/', ' ', $normalized) ?? '';
+            $normalizedReference = trim($normalized);
+        }
+
         $data = sprintf(
-            '%s|%s|%s|%s|%s|%s',
+            '%s|%s|%s|%s|%s',
             $date->format('Y-m-d'),
             $amount,
             $fromAccount,
             $toAccount,
-            $reference,
-            $transactionId,
+            $normalizedReference,
         );
 
         return hash('sha256', $data);

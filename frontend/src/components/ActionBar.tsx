@@ -27,7 +27,7 @@ export interface AccountOption {
 }
 
 export interface BulkAction {
-    action: 'apply_label' | 'remove_label' | 'mark_refund' | 'remove_refund';
+    action: 'apply_label' | 'remove_label' | 'mark_refund' | 'remove_refund' | 'mark_internal' | 'unmark_internal';
     labelId?: string;
     parentTransferId?: string;
 }

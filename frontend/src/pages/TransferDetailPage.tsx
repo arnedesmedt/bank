@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { apiGet, API_URL } from '../services/apiClient';
 import { fetchLabels, type Label } from '../services/labelsService';
 import Amount from '../components/Amount';
+import { bulkAction } from '../services/transfersService';
 
 interface LabelLink {
     id: string;
@@ -54,6 +55,7 @@ const TransferDetailPage: React.FC = () => {
     const [assignError, setAssignError] = useState<string | null>(null);
     const [removingLabelId, setRemovingLabelId] = useState<string | null>(null);
     const [archivingLabelId, setArchivingLabelId] = useState<string | null>(null);
+    const [togglingInternal, setTogglingInternal] = useState(false);
 
     // Quick-create label modal
     const [showCreateLabel, setShowCreateLabel] = useState(false);
@@ -245,6 +247,25 @@ const TransferDetailPage: React.FC = () => {
         }
     };
 
+    const handleToggleInternal = async () => {
+        if (!accessToken || !id || !transfer) return;
+        setTogglingInternal(true);
+        try {
+            await bulkAction(
+                {
+                    action: transfer.isInternal ? 'unmark_internal' : 'mark_internal',
+                    transferIds: [id],
+                },
+                accessToken,
+            );
+            await loadTransfer();
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to update transfer');
+        } finally {
+            setTogglingInternal(false);
+        }
+    };
+
     const formatDate = (dateStr: string) =>
         new Date(dateStr).toLocaleDateString('en-GB', {
             day: '2-digit',
@@ -387,15 +408,30 @@ const TransferDetailPage: React.FC = () => {
 
                     <div>
                         <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Type</p>
-                        <p className="text-sm text-gray-800">
-                            {transfer.isInternal ? (
-                                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-200 text-gray-700">
-                                    Internal transfer
-                                </span>
-                            ) : (
-                                'External'
-                            )}
-                        </p>
+                        <div className="flex items-center gap-3">
+                            <p className="text-sm text-gray-800">
+                                {transfer.isInternal ? (
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-200 text-gray-700">
+                                        Internal transfer
+                                    </span>
+                                ) : (
+                                    'External'
+                                )}
+                            </p>
+                            <button
+                                type="button"
+                                onClick={() => void handleToggleInternal()}
+                                disabled={togglingInternal}
+                                className={`text-xs px-2 py-1 rounded border transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:opacity-50 ${
+                                    transfer.isInternal
+                                        ? 'border-orange-300 text-orange-700 bg-orange-50 hover:bg-orange-100'
+                                        : 'border-gray-300 text-gray-600 bg-gray-50 hover:bg-gray-100'
+                                }`}
+                                title={transfer.isInternal ? 'Mark as external' : 'Mark as internal'}
+                            >
+                                {togglingInternal ? '…' : transfer.isInternal ? 'Mark as external' : 'Mark as internal'}
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>

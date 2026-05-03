@@ -29,7 +29,8 @@ export interface Transfer {
     labelNames: string[];
     labelLinks: LabelLink[];
     parentTransferId: string | null;
-    childRefundIds: string[];
+    /** Child refund transfers embedded in this parent. Empty for leaf/child transfers. */
+    childRefunds: Transfer[];
 }
 
 export interface TransferFilters {
@@ -56,7 +57,7 @@ export interface GroupByResult {
 }
 
 export interface BulkActionRequest {
-    action: 'apply_label' | 'remove_label' | 'mark_refund' | 'remove_refund';
+    action: 'apply_label' | 'remove_label' | 'mark_refund' | 'remove_refund' | 'mark_internal' | 'unmark_internal';
     transferIds: string[];
     labelId?: string;
     parentTransferId?: string;
@@ -86,7 +87,7 @@ export async function fetchTransfers(
     }
     if (filters.amountMin) params.set('amountMin', filters.amountMin);
     if (filters.amountMax) params.set('amountMax', filters.amountMax);
-    if (filters.amountOperator && filters.amountOperator !== 'eq') params.set('amountOperator', filters.amountOperator);
+    if (filters.amountOperator) params.set('amountOperator', filters.amountOperator);
     if (filters.excludeInternal) params.set('excludeInternal', 'true');
 
     const query = params.toString();
@@ -162,3 +163,28 @@ export async function deleteAllTransfers(accessToken: string): Promise<{ deleted
 
     return response.json() as Promise<{ deleted: number }>;
 }
+
+// ── Stats ─────────────────────────────────────────────────────────────────────
+
+export interface AppStats {
+    transfers: {
+        total: number;
+        withLabels: number;
+        withoutLabels: number;
+        internal: number;
+        reversed: number;
+    };
+    labels: {
+        total: number;
+    };
+    bankAccounts: {
+        total: number;
+        internal: number;
+    };
+}
+
+/** Fetch aggregate stats for the settings dashboard. */
+export function fetchStats(accessToken: string): Promise<AppStats> {
+    return apiGet<AppStats>('/api/settings/stats', accessToken);
+}
+

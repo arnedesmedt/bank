@@ -119,8 +119,8 @@ class TransferStateProvider implements ProviderInterface
             $amountOperator = $filters['amountOperator'];
         }
 
-        if (isset($filters['excludeInternal']) && $filters['excludeInternal'] === 'true') {
-            $excludeInternal = true;
+        if (isset($filters['excludeInternal'])) {
+            $excludeInternal = $filters['excludeInternal'] === 'true';
         }
 
         $transfers = $this->transferRepository->findWithFilters(
@@ -137,6 +137,7 @@ class TransferStateProvider implements ProviderInterface
             $excludeInternal,
             $itemsPerPage,
             $offset,
+            true, // excludeChildren: refund children are embedded in parent DTOs
         );
 
         return array_map(

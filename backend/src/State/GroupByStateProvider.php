@@ -13,6 +13,7 @@ use DateTimeImmutable;
 use function array_filter;
 use function array_map;
 use function array_values;
+use function in_array;
 use function is_array;
 use function is_string;
 
@@ -78,7 +79,18 @@ class GroupByStateProvider implements ProviderInterface
             $labelIds = [$filters['labelIds']];
         }
 
-        $rows = $this->transferRepository->groupBy($groupBy, $period, $dateFrom, $dateTo, $labelIds);
+        // Handle "no-labels" special filter — same pattern as TransferStateProvider
+        $noLabelsOnly = false;
+        if (in_array('no-labels', $labelIds, true)) {
+            $noLabelsOnly = true;
+            $labelIds     = array_values(array_filter($labelIds, static fn (string $id): bool => $id !== 'no-labels'));
+            // "No labels" grouped by label/label_and_period is meaningless; fall back to period grouping
+            if ($groupBy === 'label' || $groupBy === 'label_and_period') {
+                $groupBy = 'period';
+            }
+        }
+
+        $rows = $this->transferRepository->groupBy($groupBy, $period, $dateFrom, $dateTo, $labelIds, $noLabelsOnly);
 
         return array_map(static function (array $row) use ($groupBy): GroupByResult {
             $groupByResult                = new GroupByResult();

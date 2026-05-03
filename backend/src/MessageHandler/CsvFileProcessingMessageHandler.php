@@ -73,10 +73,9 @@ class CsvFileProcessingMessageHandler
                 'trace' => $throwable->getTraceAsString(),
             ]);
 
-            // Clean up the temporary file even on error
-            if (file_exists($csvFileProcessingMessage->filePath)) {
-                unlink($csvFileProcessingMessage->filePath);
-            }
+            // Do NOT delete the file here – the message may be retried and the file
+            // must still exist for the next attempt.  Orphaned files are cleaned up
+            // by the MultiCsvFileProcessingMessageHandler or a future scheduled task.
 
             throw $throwable;
         }

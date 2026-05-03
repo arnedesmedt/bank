@@ -16,7 +16,8 @@ use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Uid\Uuid;
 
-use function count;
+use function array_merge;
+use function in_array;
 use function is_string;
 use function trim;
 
@@ -52,6 +53,10 @@ class BankAccountStateProcessor implements ProcessorInterface
 
             // Check if internal status is changing
             $oldInternalStatus = $bankAccount->isInternal();
+
+            // Capture old labels before mapping (for re-evaluation after removal)
+            $oldLinkedLabels = $bankAccount->getLinkedLabels()->toArray();
+
             $this->entityMapper->mapDtoToBankAccount($data, $bankAccount);
             $newInternalStatus = $bankAccount->isInternal();
 
@@ -62,9 +67,25 @@ class BankAccountStateProcessor implements ProcessorInterface
                 $this->transferRepository->updateTransferInternalStatusForAccount($bankAccount);
             }
 
-            // FR-011: Re-evaluate automatic label links for labels linked to this bank account
-            $affectedLabels = $bankAccount->getLinkedLabels()->toArray();
-            if (count($affectedLabels) > 0) {
+            // FR-011: Re-evaluate for all affected labels (old + new to catch additions and removals)
+            $newLinkedLabels = $bankAccount->getLinkedLabels()->toArray();
+            $seenIds         = [];
+            $affectedLabels  = [];
+            foreach (array_merge($oldLinkedLabels, $newLinkedLabels) as $label) {
+                $labelId = $label->getId()?->toRfc4122();
+                if ($labelId === null) {
+                    continue;
+                }
+
+                if (in_array($labelId, $seenIds, true)) {
+                    continue;
+                }
+
+                $seenIds[]        = $labelId;
+                $affectedLabels[] = $label;
+            }
+
+            if ($affectedLabels !== []) {
                 $this->labelingService->reevaluateLinksForLabels($affectedLabels);
             }
 

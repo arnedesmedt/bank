@@ -95,17 +95,37 @@ class TransferImportProcessor implements ProcessorInterface
                     );
                 }
 
-                // Validate file type
-                if ($file->getClientMimeType() !== 'text/csv' && $file->getClientOriginalExtension() !== 'csv') {
-                    $fileName = $file->getClientOriginalName();
+                // Validate file type and determine extension
+                if ($bankType === 'belfius_pdf') {
+                    $isPdf = $file->getClientMimeType() === 'application/pdf'
+                        || $file->getClientOriginalExtension() === 'pdf';
 
-                    throw new BadRequestHttpException(
-                        sprintf('File %s must be a CSV file', $fileName),
-                    );
+                    if (! $isPdf) {
+                        $fileName = $file->getClientOriginalName();
+
+                        throw new BadRequestHttpException(
+                            sprintf('File %s must be a PDF file for Belfius PDF import', $fileName),
+                        );
+                    }
+
+                    $extension = 'pdf';
+                } else {
+                    $isCsv = $file->getClientMimeType() === 'text/csv'
+                        || $file->getClientOriginalExtension() === 'csv';
+
+                    if (! $isCsv) {
+                        $fileName = $file->getClientOriginalName();
+
+                        throw new BadRequestHttpException(
+                            sprintf('File %s must be a CSV file', $fileName),
+                        );
+                    }
+
+                    $extension = 'csv';
                 }
 
                 // Store file temporarily
-                $fileName = $uploadId . '_' . uniqid() . '.csv';
+                $fileName = $uploadId . '_' . uniqid() . '.' . $extension;
                 $filePath = $this->uploadDir . '/' . $fileName;
 
                 if (! is_dir($this->uploadDir)) {

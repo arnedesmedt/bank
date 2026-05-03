@@ -31,7 +31,14 @@ use Symfony\Component\Validator\Constraints as Assert;
 class BulkTransferAction
 {
     #[Assert\NotBlank]
-    #[Assert\Choice(choices: ['apply_label', 'remove_label', 'mark_refund', 'remove_refund'])]
+    #[Assert\Choice(choices: [
+        'apply_label',
+        'remove_label',
+        'mark_refund',
+        'remove_refund',
+        'mark_internal',
+        'unmark_internal',
+    ])]
     #[ApiProperty(description: 'The bulk action to perform.')]
     public string $action = '';
 

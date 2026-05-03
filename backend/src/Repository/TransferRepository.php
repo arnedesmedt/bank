@@ -21,8 +21,10 @@ use function array_values;
 use function assert;
 use function bcsub;
 use function implode;
+use function is_float;
 use function is_int;
 use function is_numeric;
+use function is_string;
 use function sprintf;
 
 /** @extends ServiceEntityRepository<Transfer> */
@@ -237,6 +239,49 @@ class TransferRepository extends ServiceEntityRepository
     }
 
     /**
+     * Return aggregate statistics for the transfer overview.
+     *
+     * @return array{total: int, withLabels: int, withoutLabels: int, internal: int, reversed: int}
+     */
+    public function getStats(): array
+    {
+        $connection = $this->getEntityManager()->getConnection();
+
+        $rawTotal = $connection->fetchOne('SELECT COUNT(*) FROM transfers WHERE is_reversed = false');
+        assert(is_string($rawTotal) || is_int($rawTotal) || is_float($rawTotal));
+        $total = (int) $rawTotal;
+
+        $rawWithLabels = $connection->fetchOne(
+            'SELECT COUNT(DISTINCT t.uuid)
+             FROM transfers t
+             JOIN label_transfer_link ltl ON ltl.transfer_uuid = t.uuid
+             WHERE ltl.is_archived = false AND t.is_reversed = false',
+        );
+        assert(is_string($rawWithLabels) || is_int($rawWithLabels) || is_float($rawWithLabels));
+        $withLabels = (int) $rawWithLabels;
+
+        $rawInternal = $connection->fetchOne(
+            'SELECT COUNT(*) FROM transfers WHERE is_internal = true AND is_reversed = false',
+        );
+        assert(is_string($rawInternal) || is_int($rawInternal) || is_float($rawInternal));
+        $internal = (int) $rawInternal;
+
+        $rawReversed = $connection->fetchOne(
+            'SELECT COUNT(*) FROM transfers WHERE is_reversed = true',
+        );
+        assert(is_string($rawReversed) || is_int($rawReversed) || is_float($rawReversed));
+        $reversed = (int) $rawReversed;
+
+        return [
+            'total'         => $total,
+            'withLabels'    => $withLabels,
+            'withoutLabels' => $total - $withLabels,
+            'internal'      => $internal,
+            'reversed'      => $reversed,
+        ];
+    }
+
+    /**
      * Find transfers with optional filters: search, dateFrom, dateTo, labelIds, accountId.
      *
      * @param array<string> $labelIds
@@ -258,6 +303,7 @@ class TransferRepository extends ServiceEntityRepository
         bool $excludeInternal = true,
         int $limit = 30,
         int $offset = 0,
+        bool $excludeChildren = false,
     ): array {
         $queryBuilder = $this->buildFilterQuery(
             $search,
@@ -271,6 +317,7 @@ class TransferRepository extends ServiceEntityRepository
             $amountOperator,
             $noLabelsOnly,
             $excludeInternal,
+            $excludeChildren,
         );
         $queryBuilder->orderBy('t.date', 'DESC')
             ->setMaxResults($limit)
@@ -354,6 +401,7 @@ class TransferRepository extends ServiceEntityRepository
         string|null $amountOperator = 'none',
         bool $noLabelsOnly = false,
         bool $excludeInternal = true,
+        bool $excludeChildren = false,
     ): QueryBuilder {
         $queryBuilder = $this->createQueryBuilder('t')
             ->andWhere('t.isReversed = false');
@@ -452,6 +500,10 @@ class TransferRepository extends ServiceEntityRepository
             $queryBuilder->andWhere('t.isInternal = false');
         }
 
+        if ($excludeChildren) {
+            $queryBuilder->andWhere('t.parentTransfer IS NULL');
+        }
+
         return $queryBuilder;
     }
 
@@ -476,10 +528,11 @@ class TransferRepository extends ServiceEntityRepository
         DateTimeImmutable|null $dateFrom = null,
         DateTimeImmutable|null $dateTo = null,
         array $labelIds = [],
+        bool $noLabelsOnly = false,
     ): array {
         $connection = $this->getEntityManager()->getConnection();
 
-        $where  = ['t.is_reversed = false'];
+        $where  = ['t.is_reversed = false', 't.is_internal = false', 't.parent_transfer_uuid IS NULL'];
         $params = [];
 
         // Add archived label filter when joining with label_transfer_link
@@ -551,11 +604,32 @@ class TransferRepository extends ServiceEntityRepository
                 $whereClause,
             );
         } else {
-            // period-only: join labels only when a label filter is active
-            $labelJoin = $labelIds !== []
-                ? 'INNER JOIN label_transfer_link ltl ON ltl.transfer_uuid = t.uuid
+            // period-only grouping
+            if ($noLabelsOnly) {
+                // Left join with condition so NULL means no active label
+                $labelJoin    = 'LEFT JOIN label_transfer_link ltl'
+                    . ' ON ltl.transfer_uuid = t.uuid AND ltl.is_archived = false';
+                $noLabelWhere = [
+                    't.is_reversed = false',
+                    't.is_internal = false',
+                    't.parent_transfer_uuid IS NULL',
+                    'ltl.uuid IS NULL',
+                ];
+                if ($dateFrom instanceof DateTimeImmutable) {
+                    $noLabelWhere[] = 't.date >= :dateFrom';
+                }
+
+                if ($dateTo instanceof DateTimeImmutable) {
+                    $noLabelWhere[] = 't.date <= :dateTo';
+                }
+
+                $whereClause = 'WHERE ' . implode(' AND ', $noLabelWhere);
+            } else {
+                $labelJoin = $labelIds !== []
+                    ? 'INNER JOIN label_transfer_link ltl ON ltl.transfer_uuid = t.uuid
                 INNER JOIN labels lbl ON lbl.uuid = ltl.label_uuid'
-                : '';
+                    : '';
+            }
 
             $sql = sprintf(
                 '
@@ -603,6 +677,7 @@ class TransferRepository extends ServiceEntityRepository
         string|null $amountOperator = 'none',
         bool $noLabelsOnly = false,
         bool $excludeInternal = true,
+        bool $excludeChildren = false,
     ): array {
         $queryBuilder = $this->buildFilterQuery(
             $search,
@@ -616,6 +691,7 @@ class TransferRepository extends ServiceEntityRepository
             $amountOperator,
             $noLabelsOnly,
             $excludeInternal,
+            $excludeChildren,
         );
 
         // Calculate totals using SQL aggregate functions

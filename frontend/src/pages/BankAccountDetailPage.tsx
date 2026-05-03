@@ -12,8 +12,8 @@ import Amount from '../components/Amount';
 import { ActionBar } from '../components/ActionBar';
 import type { TransferFilters, LabelOption, BulkAction } from '../components/ActionBar';
 import { useNavigate } from 'react-router-dom';
-import type { Transfer } from '../services/transfersService';
 import { bulkAction } from '../services/transfersService';
+import { MultiSelect } from '../components/MultiSelect';
 
 interface Props {
     bankAccountId: string;
@@ -29,7 +29,7 @@ type ViewMode = 'view' | 'edit';
  * Edit mode allows changing the account name.
  * T029: Delete is intentionally disabled (bank account deletion is not allowed).
  */
-const EMPTY_FILTERS: TransferFilters = { search: '', dateFrom: '', dateTo: '', labelIds: [], accountIds: [], amountMin: '', amountMax: '', amountOperator: 'eq' };
+const EMPTY_FILTERS: TransferFilters = { search: '', dateFrom: '', dateTo: '', labelIds: [], accountIds: [], amountMin: '', amountMax: '', amountOperator: 'eq', excludeInternal: false };
 
 const BankAccountDetailPage: React.FC<Props> = ({ bankAccountId, onBack }) => {
     const { accessToken } = useAuth();
@@ -55,6 +55,7 @@ const BankAccountDetailPage: React.FC<Props> = ({ bankAccountId, onBack }) => {
     // Form state for edit mode
     const [editName, setEditName] = useState('');
     const [editIsInternal, setEditIsInternal] = useState(false);
+    const [editLinkedLabelIds, setEditLinkedLabelIds] = useState<string[]>([]);
 
     const loadAccount = useCallback(async () => {
         if (!accessToken) return;
@@ -65,6 +66,7 @@ const BankAccountDetailPage: React.FC<Props> = ({ bankAccountId, onBack }) => {
             setAccount(data);
             setEditName(data.accountName ?? '');
             setEditIsInternal(data.isInternal);
+            setEditLinkedLabelIds(data.linkedLabelIds ?? []);
         } catch {
             setError('Failed to load bank account.');
         } finally {
@@ -126,7 +128,7 @@ const BankAccountDetailPage: React.FC<Props> = ({ bankAccountId, onBack }) => {
         setSubmitting(true);
         setFormError(null);
         try {
-            const updated = await updateBankAccount(bankAccountId, editName.trim(), accessToken, account.accountNumber, editIsInternal);
+            const updated = await updateBankAccount(bankAccountId, editName.trim(), accessToken, account.accountNumber, editIsInternal, editLinkedLabelIds);
             setAccount(updated);
             setMode('view');
             setSuccessMessage('Bank account updated successfully.');
@@ -145,6 +147,7 @@ const BankAccountDetailPage: React.FC<Props> = ({ bankAccountId, onBack }) => {
         if (account) {
             setEditName(account.accountName ?? '');
             setEditIsInternal(account.isInternal);
+            setEditLinkedLabelIds(account.linkedLabelIds ?? []);
         }
     };
 
@@ -191,7 +194,7 @@ const BankAccountDetailPage: React.FC<Props> = ({ bankAccountId, onBack }) => {
         ? (transfers.find((t) => t.id === linkRefundParentId) ?? null)
         : null;
 
-    const alreadyChildrenOfParent = new Set(linkRefundParent?.childRefundIds ?? []);
+    const alreadyChildrenOfParent = new Set((linkRefundParent?.childRefunds ?? []).map((c) => c.id));
 
     const parentAmount = parseFloat(linkRefundParent?.amount ?? '0');
     const linkRefundSum = linkRefundSelected.reduce((sum, id) => {
@@ -381,6 +384,23 @@ const BankAccountDetailPage: React.FC<Props> = ({ bankAccountId, onBack }) => {
                                 Internal accounts are used for transfers between your own accounts and are excluded from some analytics.
                             </p>
                         </div>
+                        {availableLabels.length > 0 && (
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    Linked Labels (optional)
+                                </label>
+                                <MultiSelect
+                                    placeholder="Select labels…"
+                                    options={availableLabels}
+                                    selectedIds={editLinkedLabelIds}
+                                    onChange={setEditLinkedLabelIds}
+                                    searchPlaceholder="Search labels…"
+                                />
+                                <p className="mt-1 text-xs text-gray-500">
+                                    Transfers involving this account will be auto-labeled with the selected labels.
+                                </p>
+                            </div>
+                        )}
                         <div className="flex gap-3">
                             <button
                                 type="submit"
@@ -547,8 +567,7 @@ const BankAccountDetailPage: React.FC<Props> = ({ bankAccountId, onBack }) => {
                                         const isThisParent = t.id === linkRefundParentId;
                                         const isAlreadyChild = alreadyChildrenOfParent.has(t.id);
                                         const isSelectedAsRefund = linkRefundSelected.includes(t.id);
-                                        const isLinkedElsewhere = !isThisParent && !isAlreadyChild && !!t.parentTransferId;
-                                        
+
                                         // Row visual class
                                         let rowClass = "transition-colors ";
                                         if (isLinking) {
@@ -623,7 +642,7 @@ const BankAccountDetailPage: React.FC<Props> = ({ bankAccountId, onBack }) => {
                                                 </td>
                                                 <td className="px-4 py-3 text-sm text-gray-900 max-w-xs truncate">
                                                     <div className="flex items-center gap-2">
-                                                        <span>{t.reference || "â"}</span>
+                                                        <span>{t.reference || ""}</span>
                                                         {t.parentTransferId && (
                                                             <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-100 text-indigo-700">Refund</span>
                                                         )}

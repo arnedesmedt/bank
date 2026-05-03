@@ -106,8 +106,8 @@ class TransferTotalsProvider implements ProviderInterface
             $amountOperator = $filters['amountOperator'];
         }
 
-        if (isset($filters['excludeInternal']) && $filters['excludeInternal'] === 'true') {
-            $excludeInternal = true;
+        if (isset($filters['excludeInternal'])) {
+            $excludeInternal = $filters['excludeInternal'] === 'true';
         }
 
         $totals = $this->transferRepository->calculateTotalsWithFilters(
@@ -122,6 +122,7 @@ class TransferTotalsProvider implements ProviderInterface
             $amountOperator,
             $noLabelsOnly,
             $excludeInternal,
+            true, // excludeChildren: refund children are embedded in parent DTOs
         );
 
         return [

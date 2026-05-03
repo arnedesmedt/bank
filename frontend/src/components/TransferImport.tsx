@@ -31,7 +31,7 @@ export function TransferImport({ onImportComplete, compact = false }: Props) {
   const [isOpen, setIsOpen] = useState(false);
   const [isWide, setIsWide] = useState(() => typeof window !== 'undefined' && window.innerWidth >= 1024);
   const [files, setFiles] = useState<FileList | null>(null);
-  const [bankType, setBankType] = useState<'belfius' | 'kbc'>('belfius');
+  const [bankType, setBankType] = useState<'belfius' | 'belfius_pdf' | 'kbc'>('belfius');
   const [uploading, setUploading] = useState(false);
   const [result, setResult] = useState<ImportResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -120,26 +120,27 @@ export function TransferImport({ onImportComplete, compact = false }: Props) {
         </label>
         <select
           value={bankType}
-          onChange={(e) => setBankType(e.target.value as 'belfius' | 'kbc')}
+          onChange={(e) => setBankType(e.target.value as 'belfius' | 'belfius_pdf' | 'kbc')}
           className="block w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
           disabled={uploading}
         >
-          <option value="belfius">Belfius</option>
+          <option value="belfius">Belfius (CSV)</option>
+          <option value="belfius_pdf">Belfius (PDF)</option>
           <option value="kbc">KBC</option>
         </select>
         <p className="text-xs text-gray-500 mt-1">
-          Select the bank that exported your CSV file.
+          Select the bank that exported your file.
         </p>
       </div>
 
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
-          Select CSV Files ({bankType === 'belfius' ? 'Belfius' : 'KBC'} Format)
+          Select {bankType === 'belfius_pdf' ? 'PDF' : 'CSV'} Files ({bankType === 'belfius' ? 'Belfius CSV' : bankType === 'belfius_pdf' ? 'Belfius PDF' : 'KBC'} Format)
         </label>
         <input
           id="transfer-file-upload"
           type="file"
-          accept=".csv"
+          accept={bankType === 'belfius_pdf' ? '.pdf,application/pdf' : '.csv'}
           multiple
           onChange={handleFileChange}
           className="block w-full text-sm text-gray-500
@@ -152,7 +153,7 @@ export function TransferImport({ onImportComplete, compact = false }: Props) {
           data-testid="file-input"
         />
         <p className="text-xs text-gray-500 mt-1">
-          You can select multiple CSV files to upload at once.
+          You can select multiple {bankType === 'belfius_pdf' ? 'PDF' : 'CSV'} files to upload at once.
         </p>
       </div>
       
@@ -259,7 +260,7 @@ export function TransferImport({ onImportComplete, compact = false }: Props) {
       >
         <div className="px-5 py-4 border-b border-gray-200 bg-gray-50">
           <h2 className="text-lg font-bold text-gray-800">Import Transfers</h2>
-          <p className="text-xs text-gray-500 mt-0.5">Upload Belfius or KBC CSV files (single or multiple)</p>
+          <p className="text-xs text-gray-500 mt-0.5">Upload Belfius CSV/PDF or KBC CSV files</p>
         </div>
         {panelContent}
       </div>

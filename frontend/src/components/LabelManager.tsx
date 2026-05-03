@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { MultiSelect } from './MultiSelect';
 
 interface Label {
   id: string;
@@ -110,9 +111,7 @@ function LabelManager() {
     setFormChildLabelIds((prev) =>
       prev.includes(childLabelId) ? prev.filter((id) => id !== childLabelId) : [...prev, childLabelId],
     );
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  };  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!accessToken) return;
     setFormSubmitting(true);
@@ -226,19 +225,14 @@ function LabelManager() {
             {labels.length > 0 && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Child Labels (optional)</label>
-                <div className="space-y-1 max-h-40 overflow-y-auto border border-gray-200 rounded p-2 bg-white" data-testid="child-label-checkboxes">
-                  {labels.filter((label) => label.id !== formParentLabelId || formParentLabelId === '').map((label) => (
-                    <label key={label.id} className="flex items-center gap-2 text-sm cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={formChildLabelIds.includes(label.id)}
-                        onChange={() => toggleChildLabel(label.id)}
-                        data-testid={`child-label-checkbox-${label.id}`}
-                      />
-                      <span>{label.name}{label.parentLabelName != null ? ` (child of ${label.parentLabelName})` : ''}</span>
-                    </label>
-                  ))}
-                </div>
+                <MultiSelect
+                  placeholder="Select child labels…"
+                  options={labels.filter((label) => label.id !== formParentLabelId || formParentLabelId === '')}
+                  selectedIds={formChildLabelIds}
+                  onChange={setFormChildLabelIds}
+                  searchPlaceholder="Search labels…"
+                  data-testid="child-label-checkboxes"
+                />
               </div>
             )}
 
@@ -246,19 +240,14 @@ function LabelManager() {
             {bankAccounts.length > 0 && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Linked Bank Accounts</label>
-                <div className="space-y-1 max-h-40 overflow-y-auto border border-gray-200 rounded p-2 bg-white" data-testid="bank-account-checkboxes">
-                  {bankAccounts.map((ba) => (
-                    <label key={ba.id} className="flex items-center gap-2 text-sm cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={formLinkedBankAccountIds.includes(ba.id)}
-                        onChange={() => toggleBankAccount(ba.id)}
-                        data-testid={`bank-account-checkbox-${ba.id}`}
-                      />
-                      <span>{ba.accountName} <span className="text-gray-500">({ba.accountNumber})</span></span>
-                    </label>
-                  ))}
-                </div>
+                <MultiSelect
+                  placeholder="Select bank accounts…"
+                  options={bankAccounts.map((ba) => ({ id: ba.id, name: `${ba.accountName} (${ba.accountNumber})` }))}
+                  selectedIds={formLinkedBankAccountIds}
+                  onChange={setFormLinkedBankAccountIds}
+                  searchPlaceholder="Search accounts…"
+                  data-testid="bank-account-checkboxes"
+                />
               </div>
             )}
 

@@ -179,7 +179,7 @@ const TransferListPage: React.FC = () => {
                                 <h2 id="import-modal-title" className="text-lg font-bold text-gray-800">
                                     Import Transfers
                                 </h2>
-                                <p className="text-xs text-gray-500 mt-0.5">Upload a Belfius CSV file</p>
+                                <p className="text-xs text-gray-500 mt-0.5">Upload a Belfius CSV/PDF or KBC CSV file</p>
                             </div>
                             <button
                                 onClick={() => setShowImportModal(false)}

@@ -20,7 +20,7 @@ use function array_map;
 /**
  * Handles PATCH /api/transfers/bulk for bulk actions on transfers.
  *
- * Supported actions: apply_label, remove_label, mark_refund, remove_refund
+ * Supported actions: apply_label, remove_label, mark_refund, remove_refund, mark_internal, unmark_internal
  *
  * @implements ProcessorInterface<BulkTransferAction, array<TransferApiResource>>
  */
@@ -50,10 +50,12 @@ class TransferBulkActionProcessor implements ProcessorInterface
 
         try {
             $transfers = match ($data->action) {
-                'apply_label'   => $this->applyLabel($data),
-                'remove_label'  => $this->removeLabel($data),
-                'mark_refund'   => $this->markRefund($data),
-                'remove_refund' => $this->removeRefund($data),
+                'apply_label'     => $this->applyLabel($data),
+                'remove_label'    => $this->removeLabel($data),
+                'mark_refund'     => $this->markRefund($data),
+                'remove_refund'   => $this->removeRefund($data),
+                'mark_internal'   => $this->setInternal($data, true),
+                'unmark_internal' => $this->setInternal($data, false),
                 default => throw new BadRequestHttpException('Unknown action: ' . $data->action),
             };
         } catch (InvalidArgumentException $invalidArgumentException) {
@@ -100,5 +102,11 @@ class TransferBulkActionProcessor implements ProcessorInterface
     private function removeRefund(BulkTransferAction $bulkTransferAction): array
     {
         return $this->transferService->bulkRemoveRefund($bulkTransferAction->transferIds);
+    }
+
+    /** @return array<Transfer> */
+    private function setInternal(BulkTransferAction $bulkTransferAction, bool $isInternal): array
+    {
+        return $this->transferService->bulkMarkInternal($bulkTransferAction->transferIds, $isInternal);
     }
 }

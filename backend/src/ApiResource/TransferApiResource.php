@@ -108,10 +108,11 @@ class TransferApiResource
     public string|null $amountBeforeRefund = null;
 
     /**
-     * UUIDs of child (refund) transfers linked to this parent transfer.
+     * Child refund transfers embedded directly in this parent transfer.
+     * Empty for transfers that have no refunds or for child transfers themselves.
      *
-     * @var array<string>
+     * @var array<self>
      */
-    #[ApiProperty(description: 'UUIDs of refund transfers linked as children of this transfer.')]
-    public array $childRefundIds = [];
+    #[ApiProperty(description: 'Child refund transfers embedded in this parent transfer.')]
+    public array $childRefunds = [];
 }
