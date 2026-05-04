@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { API_URL } from '../services/apiClient';
 
 export interface ImportResult {
   message: string;
@@ -69,7 +70,7 @@ export function TransferImport({ onImportComplete, compact = false }: Props) {
       
       formData.append('bankType', bankType);
       
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/transfers/import`, {
+      const response = await fetch(`${API_URL}/api/transfers/import`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${accessToken}` },
         body: formData,

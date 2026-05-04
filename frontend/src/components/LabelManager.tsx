@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { MultiSelect } from './MultiSelect';
+import { API_URL } from '../services/apiClient';
 
 interface Label {
   id: string;
@@ -20,8 +21,6 @@ interface BankAccount {
   accountName: string;
   accountNumber: string;
 }
-
-const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8080';
 
 function LabelManager() {
   const { accessToken } = useAuth();

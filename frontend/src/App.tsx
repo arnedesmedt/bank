@@ -194,8 +194,9 @@ function AppContent() {
 }
 
 function App() {
+    const basename = window.__ingress_path__ ?? '';
     return (
-        <BrowserRouter>
+        <BrowserRouter basename={basename}>
             <AuthProvider>
                 <NotificationProvider>
                     <AppContent />

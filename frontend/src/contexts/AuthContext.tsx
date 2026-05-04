@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
+import { API_URL } from '../services/apiClient';
 
 interface User {
     id: string; // UUID as string
@@ -44,7 +45,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                 const token = localStorage.getItem('access_token');
                 if (token) {
                     // Validate token with backend
-                    const response = await fetch(`${import.meta.env.VITE_API_URL}/api/me`, {
+                    const response = await fetch(`${API_URL}/api/me`, {
                         headers: {
                             'Authorization': `Bearer ${token}`,
                             'Content-Type': 'application/json',
@@ -83,7 +84,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             formData.append('password', password);
             formData.append('scope', 'email');
 
-            const response = await fetch(`${import.meta.env.VITE_API_URL}/token`, {
+            const response = await fetch(`${API_URL}/token`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded',
@@ -101,7 +102,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             setAccessToken(data.access_token);
 
             // Fetch user info
-            const userResponse = await fetch(`${import.meta.env.VITE_API_URL}/api/me`, {
+            const userResponse = await fetch(`${API_URL}/api/me`, {
                 headers: {
                     'Authorization': `Bearer ${data.access_token}`,
                     'Content-Type': 'application/json',

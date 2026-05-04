@@ -7,7 +7,16 @@
  * these endpoints.
  */
 
-export const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8080';
+declare global {
+    interface Window {
+        __ingress_path__?: string;
+    }
+}
+
+export const API_URL: string =
+    (typeof window !== 'undefined' && window.__ingress_path__)
+        ? window.__ingress_path__
+        : (import.meta.env.VITE_API_URL ?? '');
 
 /**
  * Perform an authenticated GET request against the bank API.
