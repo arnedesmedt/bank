@@ -1,6 +1,6 @@
 name: "Bank"
 description: "Personal finance tracker — manage bank transfers, assign labels, and analyze spending"
-version: "1.0.1"
+version: "1.0.2"
 slug: "bank"
 init: false
 arch:

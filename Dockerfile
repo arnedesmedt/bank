@@ -10,7 +10,7 @@ COPY frontend/ .
 
 # Build with empty API URL so all API calls are relative (same-origin nginx).
 # Call vite build directly to skip tsc strict type-checking (esbuild handles transpilation).
-RUN VITE_API_URL="" npx vite build
+RUN VITE_API_URL="" npx vite build --base=./
 
 ###############################################################################
 # Stage 2 — Install PHP vendor dependencies (production-only)
