@@ -123,8 +123,24 @@ echo "[bank] Clearing Symfony cache..."
 su-exec www-data php /var/www/html/bin/console cache:clear \
     --env=prod --no-debug --no-warmup 2>/dev/null || true
 
-# ── Create share directory for import files ───────────────────────────────
+# ── Create share directory for import files / restores ────────────────────
 mkdir -p /share/bank
+
+# ── Auto-restore database from /share/bank/restore.sql (if present) ───────
+RESTORE_FILE=/share/bank/restore.sql
+if [ -f "$RESTORE_FILE" ]; then
+    echo "[bank] Found restore.sql — restoring database..."
+    su-exec postgres pg_ctl -D "$PGDATA" start -w -t 30
+    su-exec postgres psql -U postgres -c "DROP DATABASE IF EXISTS bank_app;"
+    su-exec postgres psql -U postgres -c "CREATE DATABASE bank_app OWNER bank_user;"
+    if su-exec postgres psql -U postgres -d bank_app -f "$RESTORE_FILE"; then
+        echo "[bank] Database restore completed successfully."
+        mv "$RESTORE_FILE" "${RESTORE_FILE}.$(date +%Y%m%d_%H%M%S).done"
+    else
+        echo "[bank] ERROR: Database restore failed. File kept at ${RESTORE_FILE}." >&2
+    fi
+    su-exec postgres pg_ctl -D "$PGDATA" stop -m fast -w
+fi
 
 echo "[bank] Initialization complete. Starting services..."
 
