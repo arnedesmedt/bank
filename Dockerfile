@@ -89,6 +89,10 @@ RUN mkdir -p /run/postgresql && chown postgres:postgres /run/postgresql
 COPY --from=frontend-builder /app/dist /var/www/frontend
 COPY --from=php-builder /app /var/www/html
 
+# ── Minimal .env so Symfony bootEnv() can find the base file ─────────────
+# Real values are injected into .env.local by start.sh at container startup.
+RUN echo 'APP_ENV=prod' > /var/www/html/.env
+
 # ── Writable Symfony runtime directories ──────────────────────────────────
 RUN mkdir -p /var/www/html/var/cache /var/www/html/var/log /var/www/html/var/sessions \
     && chown -R www-data:www-data /var/www/html/var \
