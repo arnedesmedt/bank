@@ -105,6 +105,9 @@ echo "[bank] Writing backend configuration..."
 cat > /var/www/html/.env.local << EOF
 APP_ENV=prod
 APP_SECRET=${APP_SECRET}
+APP_SHARE_DIR=var/share
+XDEBUG_MODE=off
+DEFAULT_URI=http://localhost
 DATABASE_URL=postgresql://bank_user:${DB_PASSWORD}@127.0.0.1:5432/bank_app?serverVersion=16&charset=utf8
 OAUTH_PRIVATE_KEY=/data/jwt/private.pem
 OAUTH_PUBLIC_KEY=/data/jwt/public.pem
