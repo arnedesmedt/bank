@@ -1,14 +1,36 @@
-node_modules/
-dist/
-build/
-*.log
-.env*
-coverage/
+# Version control
 .git/
-Dockerfile*
-.dockerignore
-*.tmp
-.swp
-.vscode/
+.github/
+
+# IDE / editor
 .idea/
+.vscode/
+.specify/
+
+# Root-level dev artifacts
+node_modules/
+package-lock.json
+
+# Frontend — only exclude heavy build artifacts and dependencies
+frontend/node_modules/
+frontend/dist/
+frontend/coverage/
+
+# Backend — exclude installed dependencies and runtime directories (rebuilt in Docker)
+backend/vendor/
+backend/var/
+backend/docker/xdebug.ini
+
+# Log files
+*.log
+*.tmp
+*.swp
+
+# Dev/infrastructure files not needed in the add-on image
+docker-compose.yml
+devops/
+specs/
+backups/
+scripts/
+DOCKER_STATUS.md
 

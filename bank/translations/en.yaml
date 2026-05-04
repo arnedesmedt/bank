@@ -1,0 +1,13 @@
+configuration:
+  app_secret:
+    name: App Secret
+    description: >
+      Random secret key for Symfony. Leave empty to auto-generate on first start.
+  oauth_passphrase:
+    name: OAuth Passphrase
+    description: >
+      Passphrase used to encrypt the JWT private key. Leave empty to auto-generate on first start.
+  db_password:
+    name: Database Password
+    description: >
+      Password for the internal PostgreSQL database user. Change before first start.

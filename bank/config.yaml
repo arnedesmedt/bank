@@ -1,0 +1,24 @@
+name: "Bank"
+description: "Personal finance tracker — manage bank transfers, assign labels, and analyze spending"
+version: "1.0.0"
+slug: "bank"
+init: false
+arch:
+  - amd64
+  - aarch64
+image: ghcr.io/arnedesmedt/bank
+ingress: true
+ingress_port: 8099
+panel_icon: mdi:bank
+panel_title: Bank
+map:
+  - data:rw
+  - share:rw
+options:
+  app_secret: ""
+  oauth_passphrase: ""
+  db_password: "bankpassword"
+schema:
+  app_secret: str
+  oauth_passphrase: str
+  db_password: str
